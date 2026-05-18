@@ -1,0 +1,27 @@
+[project]
+name = "roof-quote-app"
+version = "0.1.0"
+description = "AI-powered roof measurement and quote generation workflow"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "agno>=2.3.4",
+    "anthropic>=0.40.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "streamlit>=1.28.0",
+    "pydantic>=2.0.0",
+    "reportlab>=4.0.0",
+    "pillow>=10.0.0",
+    "nest-asyncio>=1.5.8",
+    "pandas>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Arindam200/awesome-ai-apps"
+Repository = "https://github.com/Arindam200/awesome-ai-apps"
+Issues = "https://github.com/Arindam200/awesome-ai-apps/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
