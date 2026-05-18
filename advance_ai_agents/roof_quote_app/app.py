@@ -9,6 +9,14 @@ from pricing_data import MATERIAL_OPTIONS, REGIONAL_LABOR_MULTIPLIERS, PITCH_MUL
 
 load_dotenv()
 
+# Pull secrets from Streamlit Cloud secrets manager if available,
+# falling back to .env / environment variables.
+def _secret(key: str, default: str = "") -> str:
+    try:
+        return st.secrets.get(key, os.getenv(key, default))
+    except Exception:
+        return os.getenv(key, default)
+
 st.set_page_config(
     page_title="Roof Quote App",
     page_icon="🏠",
@@ -53,13 +61,13 @@ with st.sidebar:
     with st.expander("API Keys", expanded=True):
         anthropic_key = st.text_input(
             "Anthropic API Key",
-            value=os.getenv("ANTHROPIC_API_KEY", ""),
+            value=_secret("ANTHROPIC_API_KEY"),
             type="password",
             help="Required for roof image analysis (Claude vision)",
         )
         nebius_key = st.text_input(
             "Nebius API Key",
-            value=os.getenv("NEBIUS_API_KEY", ""),
+            value=_secret("NEBIUS_API_KEY"),
             type="password",
             help="Required for estimation & quote composition agents",
         )
@@ -71,11 +79,12 @@ with st.sidebar:
     st.divider()
 
     with st.expander("Company Settings", expanded=True):
-        company_name = st.text_input("Company Name", value="Your Roofing Co.")
-        company_phone = st.text_input("Company Phone", value="(555) 000-0000")
-        company_license = st.text_input("License #", value="ROC-XXXXXX")
+        company_name = st.text_input("Company Name", value=_secret("COMPANY_NAME", "Your Roofing Co."))
+        company_phone = st.text_input("Company Phone", value=_secret("COMPANY_PHONE", "(555) 000-0000"))
+        company_license = st.text_input("License #", value=_secret("COMPANY_LICENSE", "ROC-XXXXXX"))
+        _default_tax = float(_secret("TAX_RATE", "0.0"))
         tax_rate = st.number_input("Tax Rate (%)", min_value=0.0, max_value=20.0,
-                                    value=0.0, step=0.5) / 100
+                                    value=_default_tax, step=0.5) / 100
 
     st.divider()
 

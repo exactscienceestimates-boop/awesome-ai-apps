@@ -37,37 +37,45 @@ Input (image / address / manual)
 ### Prerequisites
 
 - Python 3.10+
-- An Anthropic API key (for image analysis — free tier works)
-- A Nebius API key (for estimation agents)
+- An [Anthropic API key](https://console.anthropic.com/) (Claude vision)
+- A [Nebius API key](https://studio.nebius.ai/) (Llama-3.3-70B estimation)
 
-### Installation
+---
+
+### Option A — Deploy to Streamlit Community Cloud (free, mobile-friendly)
+
+1. Fork or push this repo to your own GitHub account
+2. Go to **[share.streamlit.io](https://share.streamlit.io)** → **New app**
+3. Set:
+   - **Repository:** `your-username/awesome-ai-apps`
+   - **Branch:** your branch (e.g. `main`)
+   - **Main file path:** `advance_ai_agents/roof_quote_app/app.py`
+4. Click **Advanced settings → Secrets** and paste:
+   ```toml
+   ANTHROPIC_API_KEY = "sk-ant-..."
+   NEBIUS_API_KEY = "..."
+   COMPANY_NAME = "Your Roofing Co."
+   COMPANY_PHONE = "(555) 000-0000"
+   COMPANY_LICENSE = "ROC-XXXXXX"
+   ```
+5. Click **Deploy** — you'll get a public URL that works on any phone or tablet
+
+---
+
+### Option B — Run locally
 
 ```bash
 cd advance_ai_agents/roof_quote_app
-
-# Recommended: use uv
-uv pip install -e .
-
-# Or pip
-pip install -r pyproject.toml
-```
-
-### Environment Variables
-
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-Required:
-- `ANTHROPIC_API_KEY` — Claude claude-sonnet-4-6 (vision)
-- `NEBIUS_API_KEY` — Llama-3.3-70B (estimation + composition)
-
-### Run
-
-```bash
+pip install -r requirements.txt
+cp .env.example .env   # add your API keys
 streamlit run app.py
 ```
+
+Open `http://localhost:8501` in any browser.
+
+Required env vars:
+- `ANTHROPIC_API_KEY` — Claude claude-sonnet-4-6 (vision)
+- `NEBIUS_API_KEY` — Llama-3.3-70B (estimation + composition)
 
 ## Usage
 
