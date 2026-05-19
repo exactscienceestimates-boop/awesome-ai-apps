@@ -179,6 +179,45 @@ def estimate_from_address(address: str) -> RoofMeasurement:
     return _parse_measurement(resp.content, "address_lookup")
 
 
+def nearmap_to_measurement(nm_data: dict) -> RoofMeasurement:
+    """
+    Convert Nearmap AI feature data to a RoofMeasurement.
+    Nearmap returns slope-adjusted (3D surface) area; we back-calculate the flat footprint
+    so the rest of the app's pitch-multiplier formula stays consistent.
+    """
+    if nm_data.get("error"):
+        return _default_measurement("nearmap_ai", note=f"Nearmap AI error: {nm_data['error']}")
+
+    pitch = nm_data.get("pitch", "6/12")
+    pitch_multiplier = PITCH_MULTIPLIERS.get(pitch, 1.118)
+    complexity = nm_data.get("complexity", "Moderate")
+
+    # Nearmap slope area → back-calculate flat footprint
+    slope_sqft = float(nm_data.get("total_slope_sqft", 0))
+    footprint_sqft = round(slope_sqft / pitch_multiplier, 0) if pitch_multiplier else slope_sqft
+    total_squares = round((footprint_sqft / 100) * pitch_multiplier, 2)
+
+    return RoofMeasurement(
+        total_area_sqft=footprint_sqft,
+        total_squares=total_squares,
+        pitch=pitch,
+        pitch_multiplier=pitch_multiplier,
+        complexity=complexity,
+        complexity_factor=COMPLEXITY_FACTORS.get(complexity, 1.15),
+        waste_factor_pct=WASTE_FACTORS.get(complexity, 0.13),
+        perimeter_lf=float(nm_data.get("perimeter_lf", 0)),
+        ridges_lf=float(nm_data.get("ridges_lf", 0)),
+        valleys_lf=float(nm_data.get("valleys_lf", 0)),
+        hips_lf=float(nm_data.get("hips_lf", 0)),
+        eaves_lf=float(nm_data.get("eaves_lf", 0)),
+        number_of_stories=1,
+        layers_existing=1,
+        analysis_source="nearmap_ai",
+        ai_confidence="High",
+        notes=nm_data.get("notes", "Nearmap AI measurements"),
+    )
+
+
 def manual_to_measurement(m: dict) -> RoofMeasurement:
     """Convert a form dict (from manual entry or UI) to a RoofMeasurement."""
     pitch = m.get("pitch", "6/12")

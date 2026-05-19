@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import property_store as db
 from agents import (
     analyse_multiple_images, estimate_from_address,
-    manual_to_measurement, generate_quote,
+    manual_to_measurement, generate_quote, nearmap_to_measurement,
 )
 from address_lookup import lookup_property
 from measurement_report import generate_measurement_report
@@ -143,6 +143,20 @@ with st.sidebar:
         )
         if mapbox_token:
             os.environ["MAPBOX_TOKEN"] = mapbox_token
+
+        st.caption("Nearmap — highest-res aerial + AI roof measurements")
+        nearmap_key = st.text_input(
+            "Nearmap API Key (optional)",
+            value=_secret("NEARMAP_API_KEY"),
+            type="password",
+            help=(
+                "Enables Nearmap high-resolution aerial imagery (5–7.5 cm/px) "
+                "and AI-powered roof measurements (ridges, valleys, pitch, area) "
+                "without needing Claude vision. Requires roofdetection pack."
+            ),
+        )
+        if nearmap_key:
+            os.environ["NEARMAP_API_KEY"] = nearmap_key
 
         st.divider()
         company_name = st.text_input("Company Name", value=_secret("COMPANY_NAME", "Your Roofing Co."))
@@ -337,23 +351,30 @@ def view_new_or_edit():
         st.caption("Free satellite imagery — no extra API key needed.\nGoogle Maps key = higher resolution.")
 
     if run_lookup and lookup_address:
-        with st.spinner("Geocoding address and fetching satellite imagery..."):
+        nm_key = os.getenv("NEARMAP_API_KEY") or None
+        spinner_msg = (
+            "Fetching Nearmap aerial imagery and AI roof measurements..."
+            if nm_key else "Geocoding address and fetching satellite imagery..."
+        )
+        with st.spinner(spinner_msg):
             lresult = lookup_property(
                 lookup_address,
                 google_api_key=os.getenv("GOOGLE_MAPS_API_KEY") or None,
                 mapbox_token=os.getenv("MAPBOX_TOKEN") or None,
+                nearmap_api_key=nm_key,
             )
         st.session_state["_lookup_result"] = lresult
 
-        if lresult["errors"]:
-            for err in lresult["errors"]:
+        # Show non-critical errors as warnings (Nearmap AI missing is OK)
+        for err in lresult.get("errors", []):
+            if "Nearmap AI" not in err:
                 st.warning(err)
 
         geo = lresult.get("geo")
         building = lresult.get("building") or {}
+        nm_ai = lresult.get("nearmap_ai")
 
         if geo:
-            # Auto-fill address fields into session state so they pre-populate below
             st.session_state["_pf_street"] = (
                 f"{geo.get('house_number','')} {geo.get('road','')}".strip()
             )
@@ -372,8 +393,17 @@ def view_new_or_edit():
                 info_parts.append(f"  Built: **{building['year_built']}**")
             st.success("  |  ".join(info_parts))
 
-            # Pre-fill AI measurements from building data
-            if building.get("area_sqft") and building["area_sqft"] > 0:
+            # Nearmap AI measurements take highest priority (no LLM needed)
+            if nm_ai and not nm_ai.get("error"):
+                meas = nearmap_to_measurement(nm_ai)
+                st.session_state.ai_measurements = meas
+                st.success(
+                    f"🛰️ **Nearmap AI measurements imported** — "
+                    f"{nm_ai.get('notes', '')}  "
+                    f"Review and edit fields below before saving."
+                )
+            elif building.get("area_sqft") and building["area_sqft"] > 0:
+                # Fallback: pre-fill from OSM building footprint
                 if not st.session_state.ai_measurements:
                     from pricing_data import COMPLEXITY_FACTORS, WASTE_FACTORS
                     pm = 1.118
@@ -392,15 +422,23 @@ def view_new_or_edit():
                     st.session_state.ai_measurements = meas
 
         if lresult.get("satellite"):
-            st.image(lresult["satellite"], caption="Satellite view (auto-fetched)", width="stretch")
+            src_label = "Nearmap aerial" if nm_key else "Satellite view (auto-fetched)"
+            st.image(lresult["satellite"], caption=src_label, width="stretch")
         if lresult.get("street_view"):
             st.image(lresult["street_view"], caption="Street view", width="stretch")
 
-        # Auto-store fetched images
         if lresult.get("images"):
             st.session_state["_lookup_images"] = lresult["images"]
-            st.info(f"✅ {len(lresult['images'])} image(s) fetched — will be saved with the property. "
-                    "Click **Analyse Images with AI** below to extract measurements.")
+            if nm_ai and not nm_ai.get("error"):
+                st.info(
+                    f"✅ {len(lresult['images'])} image(s) fetched and Nearmap AI measurements imported. "
+                    "Review the measurement fields below — no AI image analysis needed."
+                )
+            else:
+                st.info(
+                    f"✅ {len(lresult['images'])} image(s) fetched — will be saved with the property. "
+                    "Click **Analyse Images with AI** below to extract measurements."
+                )
         st.rerun()
 
     # Show previously fetched lookup images
@@ -636,6 +674,7 @@ def view_property_detail():
         else:
             adj_sq = round(m.total_squares * m.pitch_multiplier * (1 + m.waste_factor_pct), 2)
             src_map = {
+                "nearmap_ai": "🛰️ Nearmap AI",
                 "image_upload": "🔍 AI — Image Upload",
                 "address_lookup": "📍 AI — Address Estimate",
                 "manual_input": "✋ Manual Entry",
