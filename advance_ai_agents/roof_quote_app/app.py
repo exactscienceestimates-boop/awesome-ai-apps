@@ -12,6 +12,7 @@ from agents import (
     analyse_multiple_images, estimate_from_address,
     manual_to_measurement, generate_quote,
 )
+from address_lookup import lookup_property
 from measurement_report import generate_measurement_report
 from pdf_generator import generate_quote_pdf
 from pricing_data import MATERIAL_OPTIONS, REGIONAL_LABOR_MULTIPLIERS, PITCH_MULTIPLIERS
@@ -57,6 +58,9 @@ def _set_view(view: str, property_id: str = None):
     st.session_state.edit_mode = view in ("new_property", "edit_property")
     st.session_state.ai_measurements = None
     st.session_state.uploaded_images = []
+    for k in ("_lookup_result", "_lookup_images", "_pf_street",
+              "_pf_city", "_pf_state", "_pf_zip"):
+        st.session_state.pop(k, None)
 
 
 # ------------------------------------------------------------------
@@ -120,6 +124,25 @@ with st.sidebar:
         )
         if anthropic_key:
             os.environ["ANTHROPIC_API_KEY"] = anthropic_key
+
+        st.caption("Optional — improves satellite image quality")
+        google_maps_key = st.text_input(
+            "Google Maps API Key",
+            value=_secret("GOOGLE_MAPS_API_KEY"),
+            type="password",
+            help="Enables high-res Google satellite + Street View. Without this, free ESRI imagery is used.",
+        )
+        if google_maps_key:
+            os.environ["GOOGLE_MAPS_API_KEY"] = google_maps_key
+
+        mapbox_token = st.text_input(
+            "Mapbox Token (optional)",
+            value=_secret("MAPBOX_TOKEN"),
+            type="password",
+            help="Alternative to Google Maps for satellite imagery.",
+        )
+        if mapbox_token:
+            os.environ["MAPBOX_TOKEN"] = mapbox_token
 
         st.divider()
         company_name = st.text_input("Company Name", value=_secret("COMPANY_NAME", "Your Roofing Co."))
@@ -295,23 +318,130 @@ def view_new_or_edit():
                                .index(existing.status if existing else "Measured"))
 
     st.markdown('<div class="section-header">Property Address</div>', unsafe_allow_html=True)
+
+    # ---- Auto-lookup ----
+    lookup_col, _ = st.columns([2, 3])
+    with lookup_col:
+        lookup_address = st.text_input(
+            "🔍 Enter address to auto-lookup",
+            placeholder="123 Main St, Austin, TX 78701",
+            help="Fetches satellite imagery, building footprint, and pre-fills address fields.",
+            key="lookup_addr_input",
+        )
+
+    lu1, lu2, lu3 = st.columns([1, 1, 4])
+    with lu1:
+        run_lookup = st.button("🛰️ Auto-Lookup Property", type="primary", use_container_width=True,
+                                disabled=not lookup_address)
+    with lu2:
+        st.caption("Free satellite imagery — no extra API key needed.\nGoogle Maps key = higher resolution.")
+
+    if run_lookup and lookup_address:
+        with st.spinner("Geocoding address and fetching satellite imagery..."):
+            lresult = lookup_property(
+                lookup_address,
+                google_api_key=os.getenv("GOOGLE_MAPS_API_KEY") or None,
+                mapbox_token=os.getenv("MAPBOX_TOKEN") or None,
+            )
+        st.session_state["_lookup_result"] = lresult
+
+        if lresult["errors"]:
+            for err in lresult["errors"]:
+                st.warning(err)
+
+        geo = lresult.get("geo")
+        building = lresult.get("building") or {}
+
+        if geo:
+            # Auto-fill address fields into session state so they pre-populate below
+            st.session_state["_pf_street"] = (
+                f"{geo.get('house_number','')} {geo.get('road','')}".strip()
+            )
+            st.session_state["_pf_city"] = geo.get("city", "")
+            st.session_state["_pf_state"] = geo.get("state", "")
+            st.session_state["_pf_zip"] = geo.get("zip", "")
+
+            info_parts = [f"📍 **{geo['display_name']}**"]
+            if building.get("area_sqft"):
+                info_parts.append(f"  Footprint: **{building['area_sqft']:,.0f} sq ft**")
+            if building.get("levels"):
+                info_parts.append(f"  Stories: **{building['levels']}**")
+            if building.get("building_type"):
+                info_parts.append(f"  Type: **{building['building_type'].title()}**")
+            if building.get("year_built"):
+                info_parts.append(f"  Built: **{building['year_built']}**")
+            st.success("  |  ".join(info_parts))
+
+            # Pre-fill AI measurements from building data
+            if building.get("area_sqft") and building["area_sqft"] > 0:
+                if not st.session_state.ai_measurements:
+                    from pricing_data import PITCH_MULTIPLIERS, COMPLEXITY_FACTORS, WASTE_FACTORS
+                    pm = 1.118
+                    sqft = float(building["area_sqft"])
+                    meas = RoofMeasurement(
+                        total_area_sqft=sqft,
+                        total_squares=round(sqft / 100 * pm, 2),
+                        pitch="6/12", pitch_multiplier=pm,
+                        complexity="Moderate", complexity_factor=1.15,
+                        waste_factor_pct=0.13,
+                        number_of_stories=building.get("levels") or 1,
+                        analysis_source="address_lookup",
+                        ai_confidence="Low",
+                        notes="Pre-filled from OpenStreetMap building data. Run AI analysis on satellite image for accuracy.",
+                    )
+                    st.session_state.ai_measurements = meas
+
+        if lresult.get("satellite"):
+            st.image(lresult["satellite"], caption="Satellite view (auto-fetched)", use_container_width=True)
+        if lresult.get("street_view"):
+            st.image(lresult["street_view"], caption="Street view", use_container_width=True)
+
+        # Auto-store fetched images
+        if lresult.get("images"):
+            st.session_state["_lookup_images"] = lresult["images"]
+            st.info(f"✅ {len(lresult['images'])} image(s) fetched — will be saved with the property. "
+                    "Click **Analyse Images with AI** below to extract measurements.")
+        st.rerun()
+
+    # Show previously fetched lookup images
+    _lookup_images = st.session_state.get("_lookup_images", [])
+    if _lookup_images:
+        with st.expander(f"🛰️ {len(_lookup_images)} auto-fetched image(s)", expanded=False):
+            img_cols = st.columns(min(len(_lookup_images), 3))
+            for i, (lbl, raw) in enumerate(_lookup_images):
+                img_cols[i % 3].image(raw, caption=lbl, use_container_width=True)
+
+    st.divider()
+
     ad1, ad2, ad3, ad4 = st.columns([3, 2, 1, 1])
-    street = ad1.text_input("Street Address", value=existing.street_address if existing else "")
-    city = ad2.text_input("City", value=existing.city if existing else "")
-    state = ad3.text_input("State", value=existing.state if existing else "")
-    zip_code = ad4.text_input("ZIP", value=existing.zip_code if existing else "")
+    street = ad1.text_input("Street Address",
+                             value=st.session_state.get("_pf_street", existing.street_address if existing else ""),
+                             key="pf_street")
+    city = ad2.text_input("City",
+                           value=st.session_state.get("_pf_city", existing.city if existing else ""),
+                           key="pf_city")
+    state = ad3.text_input("State",
+                            value=st.session_state.get("_pf_state", existing.state if existing else ""),
+                            key="pf_state")
+    zip_code = ad4.text_input("ZIP",
+                               value=st.session_state.get("_pf_zip", existing.zip_code if existing else ""),
+                               key="pf_zip")
 
     # ---- Images ----
     st.markdown('<div class="section-header">Property Images</div>', unsafe_allow_html=True)
     st.caption("Upload aerial, satellite, or on-site roof photos. More images = better AI analysis accuracy.")
 
     uploaded_files = st.file_uploader(
-        "Upload roof images (JPG/PNG)",
+        "Upload additional roof images (JPG/PNG) — optional if auto-lookup already fetched images",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True,
         key="img_uploader",
     )
     new_image_bytes = [(f.name, f.read()) for f in (uploaded_files or [])]
+
+    # Merge: existing DB images + auto-fetched lookup images + manually uploaded
+    _lookup_images = st.session_state.get("_lookup_images", [])
+    combined_new = _lookup_images + new_image_bytes
 
     # Show existing images (edit mode)
     if existing_images:
@@ -320,15 +450,15 @@ def view_new_or_edit():
         for i, (label, raw) in enumerate(existing_images):
             img_cols[i % 4].image(raw, caption=label, use_container_width=True)
 
-    if new_image_bytes:
-        st.caption(f"{len(new_image_bytes)} new image(s) selected:")
-        img_cols2 = st.columns(min(len(new_image_bytes), 4))
-        for i, (name, raw) in enumerate(new_image_bytes):
+    if combined_new:
+        st.caption(f"{len(combined_new)} new image(s) ready (auto-fetched + uploaded):")
+        img_cols2 = st.columns(min(len(combined_new), 4))
+        for i, (name, raw) in enumerate(combined_new):
             img_cols2[i % 4].image(raw, caption=name, use_container_width=True)
 
     # ---- AI Analysis ----
     st.markdown('<div class="section-header">AI Roof Analysis</div>', unsafe_allow_html=True)
-    all_raw_images = [raw for _, raw in (existing_images + new_image_bytes)]
+    all_raw_images = [raw for _, raw in (existing_images + combined_new)]
     full_address = f"{street}, {city}, {state} {zip_code}".strip(", ")
 
     ai_col1, ai_col2 = st.columns(2)
@@ -407,10 +537,14 @@ def view_new_or_edit():
             )
             db.save_property(prop)
 
-            # Save images
-            all_to_store = existing_images + new_image_bytes
+            # Save images (existing + auto-fetched + manually uploaded)
+            all_to_store = existing_images + combined_new
             if all_to_store:
                 db.save_images(prop_id, all_to_store)
+            # Clear lookup state after saving
+            for k in ("_lookup_result", "_lookup_images", "_pf_street",
+                      "_pf_city", "_pf_state", "_pf_zip"):
+                st.session_state.pop(k, None)
 
             st.success(f"Property saved! ID: {prop_id}")
             _set_view("property_detail", prop_id)
