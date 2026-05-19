@@ -2,7 +2,6 @@ import os
 import json
 import re
 import uuid
-import base64
 import math
 from datetime import date, timedelta
 from typing import Optional
@@ -145,10 +144,9 @@ def analyse_roof_image(image_bytes: bytes) -> RoofMeasurement:
         img = img.resize((1200, int(img.height * ratio)))
     buf = _io.BytesIO()
     img.convert("RGB").save(buf, format="JPEG", quality=88)
-    b64 = base64.b64encode(buf.getvalue()).decode()
 
     agent = _make_measurement_agent()
-    agno_img = AgnoImage(base64_data=b64, media_type="image/jpeg")
+    agno_img = AgnoImage(content=buf.getvalue(), mime_type="image/jpeg")
     resp = agent.run(
         "Analyse this roof image and return measurements as a JSON object.",
         images=[agno_img],
