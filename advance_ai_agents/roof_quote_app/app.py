@@ -296,7 +296,7 @@ def view_new_or_edit():
     existing_images = db.get_images(pid) if is_edit else []
 
     st.markdown(f"## {'✏️ Edit' if is_edit else '➕ New'} Property")
-    if is_edit and existing:
+    if is_edit and existing and existing.full_address:
         st.markdown(f"*{existing.full_address}*")
 
     # ---- Owner & Property Info ----
@@ -312,7 +312,7 @@ def view_new_or_edit():
                                   index=["Residential", "Commercial", "Multi-Family", "Industrial"]
                                   .index(existing.property_type if existing else "Residential"))
         year_built = st.number_input("Year Built", min_value=1800, max_value=2030,
-                                      value=existing.year_built or 1990)
+                                      value=existing.year_built if existing and existing.year_built else 1990)
         status = st.selectbox("Status", ["Measured", "Quoted", "Contracted", "Completed"],
                                index=["Measured", "Quoted", "Contracted", "Completed"]
                                .index(existing.status if existing else "Measured"))
