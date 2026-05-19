@@ -200,7 +200,7 @@ def _measurement_form(prefix: str, init: RoofMeasurement = None) -> dict:
     notes = st.text_area("Measurement Notes / Conditions", value=m.notes or "",
                           key=f"{prefix}_notes", height=70)
 
-    from pricing_data import PITCH_MULTIPLIERS, COMPLEXITY_FACTORS, WASTE_FACTORS
+    from pricing_data import COMPLEXITY_FACTORS, WASTE_FACTORS
     pm = PITCH_MULTIPLIERS.get(pitch, 1.118)
     total_sq = round((area_sqft / 100) * pm, 2) if area_sqft else 0
     cf = COMPLEXITY_FACTORS.get(complexity, 1.15)
@@ -375,7 +375,7 @@ def view_new_or_edit():
             # Pre-fill AI measurements from building data
             if building.get("area_sqft") and building["area_sqft"] > 0:
                 if not st.session_state.ai_measurements:
-                    from pricing_data import PITCH_MULTIPLIERS, COMPLEXITY_FACTORS, WASTE_FACTORS
+                    from pricing_data import COMPLEXITY_FACTORS, WASTE_FACTORS
                     pm = 1.118
                     sqft = float(building["area_sqft"])
                     meas = RoofMeasurement(
