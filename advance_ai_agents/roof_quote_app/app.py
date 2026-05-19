@@ -111,7 +111,7 @@ with st.sidebar:
     if st.button("➕  New Property", use_container_width=True, type="primary"):
         _set_view("new_property")
 
-    if st.button("📋  All Properties", use_container_width=True):
+    if st.button("📋  All Properties", width="stretch"):
         _set_view("list")
 
     st.divider()
@@ -392,9 +392,9 @@ def view_new_or_edit():
                     st.session_state.ai_measurements = meas
 
         if lresult.get("satellite"):
-            st.image(lresult["satellite"], caption="Satellite view (auto-fetched)", use_container_width=True)
+            st.image(lresult["satellite"], caption="Satellite view (auto-fetched)", width="stretch")
         if lresult.get("street_view"):
-            st.image(lresult["street_view"], caption="Street view", use_container_width=True)
+            st.image(lresult["street_view"], caption="Street view", width="stretch")
 
         # Auto-store fetched images
         if lresult.get("images"):
@@ -409,7 +409,7 @@ def view_new_or_edit():
         with st.expander(f"🛰️ {len(_lookup_images)} auto-fetched image(s)", expanded=False):
             img_cols = st.columns(min(len(_lookup_images), 3))
             for i, (lbl, raw) in enumerate(_lookup_images):
-                img_cols[i % 3].image(raw, caption=lbl, use_container_width=True)
+                img_cols[i % 3].image(raw, caption=lbl, width="stretch")
 
     st.divider()
 
@@ -448,13 +448,13 @@ def view_new_or_edit():
         st.caption(f"{len(existing_images)} existing image(s) on file:")
         img_cols = st.columns(min(len(existing_images), 4))
         for i, (label, raw) in enumerate(existing_images):
-            img_cols[i % 4].image(raw, caption=label, use_container_width=True)
+            img_cols[i % 4].image(raw, caption=label, width="stretch")
 
     if combined_new:
         st.caption(f"{len(combined_new)} new image(s) ready (auto-fetched + uploaded):")
         img_cols2 = st.columns(min(len(combined_new), 4))
         for i, (name, raw) in enumerate(combined_new):
-            img_cols2[i % 4].image(raw, caption=name, use_container_width=True)
+            img_cols2[i % 4].image(raw, caption=name, width="stretch")
 
     # ---- AI Analysis ----
     st.markdown('<div class="section-header">AI Roof Analysis</div>', unsafe_allow_html=True)
@@ -512,7 +512,7 @@ def view_new_or_edit():
     save_col, back_col = st.columns([1, 4])
 
     with save_col:
-        if st.button("💾 Save Property", type="primary", use_container_width=True):
+        if st.button("💾 Save Property", type="primary", width="stretch"):
             now = _now()
             prop_id = existing.property_id if existing else str(uuid.uuid4())[:8].upper()
             created = existing.created_at if existing else now
@@ -586,11 +586,11 @@ def view_property_detail():
     # Action bar
     ac1, ac2, ac3, ac4, ac5 = st.columns(5)
     with ac1:
-        if st.button("✏️ Edit Property", use_container_width=True):
+        if st.button("✏️ Edit Property", width="stretch"):
             _set_view("edit_property", pid)
             st.rerun()
     with ac2:
-        if st.button("📄 Measurement Report", use_container_width=True):
+        if st.button("📄 Measurement Report", width="stretch"):
             with st.spinner("Generating report..."):
                 pdf = generate_measurement_report(
                     prop, images,
@@ -608,11 +608,11 @@ def view_property_detail():
                 st.session_state.view = "create_quote"
                 st.rerun()
     with ac4:
-        if st.button("← All Properties", use_container_width=True):
+        if st.button("← All Properties", width="stretch"):
             _set_view("list")
             st.rerun()
     with ac5:
-        if st.button("🗑️ Delete", use_container_width=True):
+        if st.button("🗑️ Delete", width="stretch"):
             db.delete_property(pid)
             _set_view("list")
             st.rerun()
@@ -680,7 +680,7 @@ def view_property_detail():
         else:
             cols = st.columns(min(len(images), 3))
             for i, (label, raw) in enumerate(images):
-                cols[i % 3].image(raw, caption=label, use_container_width=True)
+                cols[i % 3].image(raw, caption=label, width="stretch")
 
     # ------ Info tab ------
     with tab_info:
@@ -772,7 +772,7 @@ def view_create_quote():
 
         qp1, qp2 = st.columns(2)
         with qp1:
-            if st.button("📄 Build Quote PDF", use_container_width=True):
+            if st.button("📄 Build Quote PDF", width="stretch"):
                 with st.spinner("Rendering PDF..."):
                     st.session_state.quote_pdf = generate_quote_pdf(
                         q, company_name, company_phone, company_license
