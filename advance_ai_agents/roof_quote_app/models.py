@@ -1,23 +1,65 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class RoofMeasurement(BaseModel):
-    total_squares: float = Field(..., description="Total roof area in squares (1 square = 100 sq ft)")
-    pitch: str = Field(..., description="Roof pitch, e.g. '6/12'")
-    pitch_multiplier: float = Field(..., description="Slope correction factor, e.g. 1.118 for 6/12")
-    complexity: str = Field(..., description="Simple | Moderate | Complex | Very Complex")
-    complexity_factor: float = Field(..., description="Cost multiplier: 1.0 to 1.5")
-    waste_factor_pct: float = Field(..., description="Decimal waste percentage, e.g. 0.12 for 12%")
-    perimeter_lf: float = Field(default=0.0, description="Perimeter in linear feet")
+    total_area_sqft: float = Field(default=0.0, description="Flat footprint area in sq ft")
+    total_squares: float = Field(default=0.0, description="Slope-adjusted squares (1 sq = 100 sq ft)")
+    pitch: str = Field(default="6/12")
+    pitch_multiplier: float = Field(default=1.118)
+    complexity: str = Field(default="Moderate")
+    complexity_factor: float = Field(default=1.15)
+    waste_factor_pct: float = Field(default=0.13)
+    perimeter_lf: float = Field(default=0.0)
     ridges_lf: float = Field(default=0.0)
     valleys_lf: float = Field(default=0.0)
     hips_lf: float = Field(default=0.0)
     eaves_lf: float = Field(default=0.0)
     number_of_stories: int = Field(default=1)
-    layers_existing: int = Field(default=1, description="Number of existing shingle layers to tear off")
-    analysis_source: str = Field(..., description="image_upload | address_lookup | manual_input")
-    analysis_notes: str = Field(default="")
+    layers_existing: int = Field(default=1)
+    analysis_source: str = Field(default="manual_input")
+    ai_confidence: str = Field(default="")
+    notes: str = Field(default="")
+
+
+class Property(BaseModel):
+    property_id: str
+    created_at: str
+    updated_at: str
+    status: str = Field(default="Measured")  # Measured | Quoted | Contracted | Completed
+    # Owner info
+    owner_name: str = Field(default="")
+    owner_phone: str = Field(default="")
+    owner_email: str = Field(default="")
+    # Address
+    street_address: str = Field(default="")
+    city: str = Field(default="")
+    state: str = Field(default="")
+    zip_code: str = Field(default="")
+    # Property details
+    property_type: str = Field(default="Residential")
+    year_built: Optional[int] = None
+    # Measurements (None until analysed/entered)
+    roof_measurement: Optional[RoofMeasurement] = None
+    # Images stored as list of base64 strings
+    image_count: int = Field(default=0)
+    # Notes
+    property_notes: str = Field(default="")
+
+    @property
+    def full_address(self) -> str:
+        parts = [self.street_address]
+        if self.city:
+            parts.append(self.city)
+        if self.state:
+            parts.append(self.state)
+        if self.zip_code:
+            parts.append(self.zip_code)
+        return ", ".join(p for p in parts if p)
+
+    @property
+    def display_name(self) -> str:
+        return self.street_address or self.owner_name or self.property_id
 
 
 class MaterialOption(BaseModel):
@@ -50,6 +92,7 @@ class CustomerInfo(BaseModel):
 
 class RoofQuote(BaseModel):
     quote_id: str
+    property_id: str = ""
     quote_date: str
     validity_date: str
     customer: CustomerInfo

@@ -1,383 +1,673 @@
 import os
+import uuid
 import io
+from datetime import datetime
+
+import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
-from agents import RoofQuoteWorkflow
+import property_store as db
+from agents import (
+    analyse_multiple_images, estimate_from_address,
+    manual_to_measurement, generate_quote,
+)
+from measurement_report import generate_measurement_report
 from pdf_generator import generate_quote_pdf
 from pricing_data import MATERIAL_OPTIONS, REGIONAL_LABOR_MULTIPLIERS, PITCH_MULTIPLIERS
+from models import Property, RoofMeasurement
 
 load_dotenv()
+db.init_db()
 
-# Pull secrets from Streamlit Cloud secrets manager if available,
-# falling back to .env / environment variables.
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
 def _secret(key: str, default: str = "") -> str:
     try:
         return st.secrets.get(key, os.getenv(key, default))
     except Exception:
         return os.getenv(key, default)
 
-st.set_page_config(
-    page_title="Roof Quote App",
-    page_icon="🏠",
-    layout="wide",
-)
+
+STATUS_COLORS = {
+    "Measured": "#2980B9",
+    "Quoted": "#F39C12",
+    "Contracted": "#27AE60",
+    "Completed": "#7F8C8D",
+}
+
+
+def _badge(status: str) -> str:
+    color = STATUS_COLORS.get(status, "#999")
+    return (
+        f'<span style="background:{color};color:white;padding:2px 10px;'
+        f'border-radius:12px;font-size:0.75rem;font-weight:600;">{status}</span>'
+    )
+
+
+def _now() -> str:
+    return datetime.now().isoformat()
+
+
+def _set_view(view: str, property_id: str = None):
+    st.session_state.view = view
+    st.session_state.selected_pid = property_id
+    st.session_state.edit_mode = view in ("new_property", "edit_property")
+    st.session_state.ai_measurements = None
+    st.session_state.uploaded_images = []
+
 
 # ------------------------------------------------------------------
-# Session state initialisation
+# Session state bootstrap
 # ------------------------------------------------------------------
-if "quote_history" not in st.session_state:
-    st.session_state.quote_history = []
-if "current_quote" not in st.session_state:
-    st.session_state.current_quote = None
-if "current_pdf" not in st.session_state:
-    st.session_state.current_pdf = None
-if "uploaded_image" not in st.session_state:
-    st.session_state.uploaded_image = None
+defaults = {
+    "view": "list",
+    "selected_pid": None,
+    "edit_mode": False,
+    "ai_measurements": None,
+    "uploaded_images": [],
+    "quote_preview": None,
+    "quote_pdf": None,
+    "meas_pdf": None,
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # ------------------------------------------------------------------
-# Page title
+# Page config
 # ------------------------------------------------------------------
-st.markdown(
-    """
-    <div style="text-align:center; padding: 24px 0 8px 0;">
-        <h1 style="font-size:2.2rem; font-weight:800; margin:0;">
-            🏠 AI Roof Quote Generator
-        </h1>
-        <p style="color:#666; margin-top:6px;">
-            Powered by <strong>Claude</strong> (Sonnet vision + Haiku estimation) via <strong>Agno</strong> — one API key
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+st.set_page_config(page_title="Roof Measurement CRM", page_icon="🏠", layout="wide")
+
+st.markdown("""
+<style>
+.prop-card {
+    background:#fff; border:1px solid #e0e0e0; border-radius:10px;
+    padding:14px 18px; margin-bottom:10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.prop-address { font-size:1.05rem; font-weight:700; color:#1A2332; }
+.prop-meta { font-size:0.82rem; color:#666; margin-top:2px; }
+.section-header {
+    font-size:1.1rem; font-weight:700; color:#2C3E50;
+    border-left:4px solid #2980B9; padding-left:10px; margin:18px 0 8px 0;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
-# Sidebar — API keys, company settings, quote history
+# Sidebar
 # ------------------------------------------------------------------
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.markdown("## 🏠 Roof Measurement CRM")
+    st.divider()
 
-    with st.expander("API Keys", expanded=True):
+    if st.button("➕  New Property", use_container_width=True, type="primary"):
+        _set_view("new_property")
+
+    if st.button("📋  All Properties", use_container_width=True):
+        _set_view("list")
+
+    st.divider()
+    with st.expander("⚙️ Settings", expanded=False):
         anthropic_key = st.text_input(
             "Anthropic API Key",
             value=_secret("ANTHROPIC_API_KEY"),
             type="password",
-            help="Single key for all three agents (vision, estimation, composition)",
+            help="Powers all three AI agents",
         )
-        if st.button("Save Key", use_container_width=True):
-            os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-            st.success("Key saved for this session.")
-
-    st.divider()
-
-    with st.expander("Company Settings", expanded=True):
-        company_name = st.text_input("Company Name", value=_secret("COMPANY_NAME", "Your Roofing Co."))
-        company_phone = st.text_input("Company Phone", value=_secret("COMPANY_PHONE", "(555) 000-0000"))
-        company_license = st.text_input("License #", value=_secret("COMPANY_LICENSE", "ROC-XXXXXX"))
-        _default_tax = float(_secret("TAX_RATE", "0.0"))
-        tax_rate = st.number_input("Tax Rate (%)", min_value=0.0, max_value=20.0,
-                                    value=_default_tax, step=0.5) / 100
-
-    st.divider()
-
-    st.header("📋 Quote History")
-    if not st.session_state.quote_history:
-        st.caption("No quotes yet this session.")
-    else:
-        for q in reversed(st.session_state.quote_history):
-            label = f"{q.quote_id}  —  ${q.total:,.0f}"
-            if st.button(label, key=f"hist_{q.quote_id}", use_container_width=True):
-                st.session_state.current_quote = q
-                st.session_state.current_pdf = None
-
-    st.divider()
-    st.markdown(
-        "**Agents:**\n"
-        "- 🔍 Roof Analysis (Claude Sonnet — vision)\n"
-        "- 📐 Material Estimator (Claude Haiku)\n"
-        "- ✍️ Quote Composer (Claude Haiku)"
-    )
-
-# ------------------------------------------------------------------
-# Main content — input wizard
-# ------------------------------------------------------------------
-st.subheader("Step 1 — Roof Details")
-tab_image, tab_manual, tab_address = st.tabs([
-    "📷  Upload Image",
-    "📏  Manual Measurements",
-    "📍  Address Lookup",
-])
-
-input_mode = None
-image_bytes = None
-manual_measurements = None
-address_str = None
-
-with tab_image:
-    uploaded = st.file_uploader(
-        "Upload an aerial or overhead roof photo (JPG/PNG)",
-        type=["jpg", "jpeg", "png"],
-        key="roof_uploader",
-    )
-    if uploaded:
-        st.session_state.uploaded_image = uploaded.read()
-        st.image(st.session_state.uploaded_image, caption="Uploaded roof image", use_container_width=True)
-
-    if st.session_state.uploaded_image:
-        input_mode = "image"
-        image_bytes = st.session_state.uploaded_image
-        st.info(
-            "Claude claude-sonnet-4-6 will analyse this image to extract roof measurements. "
-            "Best results with clear overhead/aerial shots.",
-            icon="ℹ️",
-        )
-
-with tab_manual:
-    col1, col2 = st.columns(2)
-    with col1:
-        area_sqft = st.number_input(
-            "Roof Footprint Area (sq ft)", min_value=100, max_value=20000,
-            value=2000, step=100,
-        )
-        pitch_choice = st.selectbox(
-            "Roof Pitch", options=list(PITCH_MULTIPLIERS.keys()), index=5
-        )
-        complexity_choice = st.selectbox(
-            "Roof Complexity",
-            options=["Simple", "Moderate", "Complex", "Very Complex"],
-            index=1,
-        )
-        stories = st.number_input("Number of Stories", min_value=1, max_value=4, value=1)
-        layers = st.number_input(
-            "Existing Shingle Layers (tearoff)", min_value=0, max_value=3, value=1,
-            help="0 = new construction, no tearoff needed",
-        )
-    with col2:
-        st.caption("Optional: Linear Footage Details")
-        perimeter = st.number_input("Perimeter (LF)", min_value=0, value=180, step=5)
-        ridges = st.number_input("Ridge Length (LF)", min_value=0, value=30, step=5)
-        valleys = st.number_input("Valley Length (LF)", min_value=0, value=20, step=5)
-        hips = st.number_input("Hip Length (LF)", min_value=0, value=40, step=5)
-        eaves = st.number_input("Eave Length (LF)", min_value=0, value=80, step=5)
-
-    if tab_manual:
-        input_mode = "manual"
-        manual_measurements = {
-            "area_sqft": area_sqft,
-            "pitch": pitch_choice,
-            "complexity": complexity_choice,
-            "number_of_stories": stories,
-            "layers_existing": layers,
-            "perimeter_lf": perimeter,
-            "ridges_lf": ridges,
-            "valleys_lf": valleys,
-            "hips_lf": hips,
-            "eaves_lf": eaves,
-        }
-
-with tab_address:
-    address_input = st.text_input(
-        "Property Address",
-        placeholder="123 Main St, Austin, TX 78701",
-    )
-    st.info(
-        "Without satellite integration the AI will estimate dimensions for a typical residential "
-        "home at this address. For accurate results, use image upload instead.",
-        icon="ℹ️",
-    )
-    if address_input:
-        input_mode = "address"
-        address_str = address_input
-
-# ------------------------------------------------------------------
-# Step 2 — Material Selection
-# ------------------------------------------------------------------
-st.divider()
-st.subheader("Step 2 — Material Selection")
-
-mat_cols = st.columns(len(MATERIAL_OPTIONS))
-selected_slug = list(MATERIAL_OPTIONS.keys())[1]  # default: architectural
-
-mat_display = {}
-for slug, mat in MATERIAL_OPTIONS.items():
-    mat_display[f"{mat.name}"] = slug
-
-selected_mat_name = st.radio(
-    "Choose roofing material",
-    options=list(mat_display.keys()),
-    index=1,
-    horizontal=True,
-    label_visibility="collapsed",
-)
-selected_slug = mat_display[selected_mat_name]
-selected_mat = MATERIAL_OPTIONS[selected_slug]
-
-mc1, mc2, mc3, mc4 = st.columns(4)
-mc1.metric("Material / sq", f"${selected_mat.material_cost_per_square:,.0f}")
-mc2.metric("Labor / sq", f"${selected_mat.labor_cost_per_square:,.0f}")
-mc3.metric("Warranty", f"{selected_mat.warranty_years} yrs")
-mc4.metric("Est. Lifespan", f"{selected_mat.lifespan_years} yrs")
-st.caption(selected_mat.description)
-
-# ------------------------------------------------------------------
-# Step 3 — Customer Info & Region
-# ------------------------------------------------------------------
-st.divider()
-st.subheader("Step 3 — Customer & Region")
-
-ci_col1, ci_col2 = st.columns(2)
-with ci_col1:
-    cust_name = st.text_input("Customer Name", placeholder="Jane Smith")
-    cust_address = st.text_input("Street Address", placeholder="123 Main Street")
-    cust_csz = st.text_input("City, State, ZIP", placeholder="Austin, TX 78701")
-with ci_col2:
-    cust_phone = st.text_input("Phone", placeholder="(512) 555-0100")
-    cust_email = st.text_input("Email", placeholder="jane@example.com")
-    region = st.selectbox("Region / Market", options=list(REGIONAL_LABOR_MULTIPLIERS.keys()), index=3)
-
-# ------------------------------------------------------------------
-# Generate Quote button
-# ------------------------------------------------------------------
-st.divider()
-generate_col, _ = st.columns([1, 3])
-with generate_col:
-    generate_btn = st.button("⚡ Generate Quote", type="primary", use_container_width=True)
-
-if generate_btn:
-    if not input_mode:
-        st.error("Please provide roof details in one of the tabs above.")
-    elif input_mode == "image" and not image_bytes:
-        st.error("Please upload a roof image first.")
-    elif input_mode == "address" and not address_str:
-        st.error("Please enter a property address.")
-    elif not os.getenv("ANTHROPIC_API_KEY") and not anthropic_key:
-        st.error("Anthropic API key is required. Add it in the sidebar.")
-    else:
         if anthropic_key:
             os.environ["ANTHROPIC_API_KEY"] = anthropic_key
 
-        customer_info = {
-            "name": cust_name,
-            "address": cust_address,
-            "city_state_zip": cust_csz,
-            "phone": cust_phone,
-            "email": cust_email,
-        }
-        company_info = {
-            "name": company_name,
-            "phone": company_phone,
-            "license": company_license,
-        }
-
-        try:
-            workflow = RoofQuoteWorkflow()
-
-            with st.status("Generating your roof quote...", expanded=True) as status:
-                if input_mode == "image":
-                    status.write("🔍 Analysing roof image with Claude vision...")
-                elif input_mode == "address":
-                    status.write("📍 Estimating dimensions from address...")
-                else:
-                    status.write("📐 Processing roof measurements...")
-
-                status.write("📐 Calculating material quantities and line items...")
-                status.write("✍️ Composing professional quote...")
-
-                quote = workflow.run(
-                    input_mode=input_mode,
-                    material_slug=selected_slug,
-                    region=region,
-                    customer_info=customer_info,
-                    company_info=company_info,
-                    tax_rate=tax_rate,
-                    image_bytes=image_bytes,
-                    address=address_str,
-                    manual_measurements=manual_measurements,
-                )
-                status.update(label="Quote ready!", state="complete")
-
-            st.session_state.current_quote = quote
-            st.session_state.current_pdf = None
-            if quote not in st.session_state.quote_history:
-                st.session_state.quote_history.append(quote)
-
-        except Exception as exc:
-            st.error(f"Quote generation failed: {exc}")
-            st.exception(exc)
-
-# ------------------------------------------------------------------
-# Step 4 — Results
-# ------------------------------------------------------------------
-if st.session_state.current_quote:
-    q = st.session_state.current_quote
-    m = q.roof_measurement
+        st.divider()
+        company_name = st.text_input("Company Name", value=_secret("COMPANY_NAME", "Your Roofing Co."))
+        company_phone = st.text_input("Phone", value=_secret("COMPANY_PHONE", "(555) 000-0000"))
+        company_license = st.text_input("License #", value=_secret("COMPANY_LICENSE", "ROC-XXXXXX"))
+        _dtax = float(_secret("TAX_RATE", "0.0"))
+        tax_rate = st.number_input("Tax Rate (%)", min_value=0.0, max_value=20.0,
+                                    value=_dtax, step=0.5) / 100
 
     st.divider()
-    st.subheader(f"Step 4 — Quote #{q.quote_id}")
-    st.success(f"Quote valid until **{q.validity_date}**")
+    # Quick property search
+    search_q = st.text_input("🔍 Search properties", placeholder="Name or address...")
 
-    # Measurement summary
-    st.markdown("#### Roof Measurements")
-    rm1, rm2, rm3, rm4, rm5 = st.columns(5)
-    rm1.metric("Total Squares", f"{m.total_squares:.1f} sq")
-    rm2.metric("Pitch", m.pitch)
-    rm3.metric("Complexity", m.complexity)
-    rm4.metric("Stories", m.number_of_stories)
-    rm5.metric("Tearoff Layers", m.layers_existing)
-    if m.analysis_notes:
-        st.caption(f"Analysis note: {m.analysis_notes}")
+# ------------------------------------------------------------------
+# Measurement editor widget (reused in new + edit views)
+# ------------------------------------------------------------------
 
-    # Scope of work
-    if q.scope_of_work:
-        st.markdown("#### Scope of Work")
-        st.write(q.scope_of_work)
+def _measurement_form(prefix: str, init: RoofMeasurement = None) -> dict:
+    """Render editable measurement fields. Returns form dict."""
+    m = init or RoofMeasurement()
 
-    # Line items
-    st.markdown("#### Line Items")
-    import pandas as pd
-    df = pd.DataFrame([
-        {
-            "Category": item.category,
-            "Description": item.description,
-            "Qty": f"{item.quantity:.2f}",
-            "Unit": item.unit,
-            "Unit Price": f"${item.unit_price:,.2f}",
-            "Total": f"${item.total:,.2f}",
-        }
-        for item in q.line_items
-    ])
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.markdown('<div class="section-header">Roof Measurements</div>', unsafe_allow_html=True)
 
-    # Totals
-    t1, t2, t3 = st.columns(3)
-    t1.metric("Subtotal", f"${q.subtotal:,.2f}")
-    t2.metric(f"Tax ({q.tax_rate * 100:.1f}%)", f"${q.tax_amount:,.2f}")
-    t3.metric("**TOTAL**", f"${q.total:,.2f}")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        area_sqft = st.number_input("Footprint Area (sq ft)", min_value=0.0,
+                                     value=float(m.total_area_sqft or 0), step=50.0, key=f"{prefix}_area")
+        pitch = st.selectbox("Pitch", options=list(PITCH_MULTIPLIERS.keys()),
+                              index=list(PITCH_MULTIPLIERS.keys()).index(m.pitch)
+                              if m.pitch in PITCH_MULTIPLIERS else 5,
+                              key=f"{prefix}_pitch")
+        complexity = st.selectbox("Complexity",
+                                   options=["Simple", "Moderate", "Complex", "Very Complex"],
+                                   index=["Simple", "Moderate", "Complex", "Very Complex"].index(m.complexity)
+                                   if m.complexity in ["Simple", "Moderate", "Complex", "Very Complex"] else 1,
+                                   key=f"{prefix}_complexity")
+    with col2:
+        stories = st.number_input("Stories", min_value=1, max_value=4,
+                                   value=int(m.number_of_stories or 1), key=f"{prefix}_stories")
+        layers = st.number_input("Existing Layers (tearoff)", min_value=0, max_value=3,
+                                  value=int(m.layers_existing or 1), key=f"{prefix}_layers",
+                                  help="0 = new construction")
+        perimeter = st.number_input("Perimeter (LF)", min_value=0.0,
+                                     value=float(m.perimeter_lf or 0), step=5.0, key=f"{prefix}_perim")
+    with col3:
+        ridges = st.number_input("Ridge Length (LF)", min_value=0.0,
+                                  value=float(m.ridges_lf or 0), step=5.0, key=f"{prefix}_ridges")
+        valleys = st.number_input("Valley Length (LF)", min_value=0.0,
+                                   value=float(m.valleys_lf or 0), step=5.0, key=f"{prefix}_valleys")
+        hips = st.number_input("Hip Length (LF)", min_value=0.0,
+                                value=float(m.hips_lf or 0), step=5.0, key=f"{prefix}_hips")
+        eaves = st.number_input("Eave Length (LF)", min_value=0.0,
+                                 value=float(m.eaves_lf or 0), step=5.0, key=f"{prefix}_eaves")
 
-    # PDF export
-    st.markdown("#### Export")
-    pdf_col1, pdf_col2 = st.columns([1, 3])
-    with pdf_col1:
-        if st.button("📄 Build PDF", use_container_width=True):
-            with st.spinner("Rendering PDF..."):
-                st.session_state.current_pdf = generate_quote_pdf(
-                    q,
+    notes = st.text_area("Measurement Notes / Conditions", value=m.notes or "",
+                          key=f"{prefix}_notes", height=70)
+
+    from pricing_data import PITCH_MULTIPLIERS, COMPLEXITY_FACTORS, WASTE_FACTORS
+    pm = PITCH_MULTIPLIERS.get(pitch, 1.118)
+    total_sq = round((area_sqft / 100) * pm, 2) if area_sqft else 0
+    cf = COMPLEXITY_FACTORS.get(complexity, 1.15)
+    wf = WASTE_FACTORS.get(complexity, 0.13)
+    adj_sq = round(total_sq * pm * (1 + wf), 2)
+
+    if area_sqft:
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric("Slope-Adjusted Squares", f"{total_sq:.2f} sq")
+        mc2.metric("Waste Factor", f"{wf * 100:.0f}%")
+        mc3.metric("Adjusted Squares (order qty)", f"{adj_sq:.2f} sq")
+
+    return {
+        "total_area_sqft": area_sqft,
+        "total_squares": total_sq,
+        "pitch": pitch,
+        "pitch_multiplier": pm,
+        "complexity": complexity,
+        "complexity_factor": cf,
+        "waste_factor_pct": wf,
+        "perimeter_lf": perimeter,
+        "ridges_lf": ridges,
+        "valleys_lf": valleys,
+        "hips_lf": hips,
+        "eaves_lf": eaves,
+        "number_of_stories": stories,
+        "layers_existing": layers,
+        "analysis_source": m.analysis_source or "manual_input",
+        "ai_confidence": m.ai_confidence or "",
+        "notes": notes,
+    }
+
+
+# ==================================================================
+# VIEW: Property List
+# ==================================================================
+
+def view_list():
+    st.markdown("## Properties")
+
+    all_props = db.list_properties()
+    if search_q:
+        all_props = [p for p in all_props
+                     if search_q.lower() in (p.full_address + p.owner_name).lower()]
+
+    if not all_props:
+        st.info("No properties yet. Click **➕ New Property** in the sidebar to add one.")
+        return
+
+    for prop in all_props:
+        m = prop.roof_measurement
+        sq_label = f"{m.total_squares:.1f} sq" if m else "Not measured"
+
+        with st.container():
+            st.markdown(f"""
+            <div class="prop-card">
+                <div class="prop-address">{prop.full_address or "—"}</div>
+                <div class="prop-meta">
+                    Owner: {prop.owner_name or "—"} &nbsp;|&nbsp;
+                    {prop.property_type} &nbsp;|&nbsp;
+                    {sq_label} &nbsp;|&nbsp;
+                    Added: {prop.created_at[:10]}
+                    &nbsp;&nbsp;{_badge(prop.status)}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            btn_col1, btn_col2, btn_col3, _ = st.columns([1, 1, 1, 5])
+            with btn_col1:
+                if st.button("View", key=f"view_{prop.property_id}"):
+                    _set_view("property_detail", prop.property_id)
+                    st.rerun()
+            with btn_col2:
+                if st.button("Edit", key=f"edit_{prop.property_id}"):
+                    _set_view("edit_property", prop.property_id)
+                    st.rerun()
+            with btn_col3:
+                if st.button("Delete", key=f"del_{prop.property_id}"):
+                    db.delete_property(prop.property_id)
+                    st.success("Property deleted.")
+                    st.rerun()
+
+
+# ==================================================================
+# VIEW: New / Edit Property
+# ==================================================================
+
+def view_new_or_edit():
+    is_edit = st.session_state.view == "edit_property"
+    pid = st.session_state.selected_pid
+
+    existing: Property = db.get_property(pid) if is_edit else None
+    existing_images = db.get_images(pid) if is_edit else []
+
+    st.markdown(f"## {'✏️ Edit' if is_edit else '➕ New'} Property")
+    if is_edit and existing:
+        st.markdown(f"*{existing.full_address}*")
+
+    # ---- Owner & Property Info ----
+    st.markdown('<div class="section-header">Property & Owner Information</div>', unsafe_allow_html=True)
+    pi1, pi2 = st.columns(2)
+    with pi1:
+        owner_name = st.text_input("Owner Name", value=existing.owner_name if existing else "")
+        owner_phone = st.text_input("Phone", value=existing.owner_phone if existing else "")
+        owner_email = st.text_input("Email", value=existing.owner_email if existing else "")
+    with pi2:
+        prop_type = st.selectbox("Property Type",
+                                  ["Residential", "Commercial", "Multi-Family", "Industrial"],
+                                  index=["Residential", "Commercial", "Multi-Family", "Industrial"]
+                                  .index(existing.property_type if existing else "Residential"))
+        year_built = st.number_input("Year Built", min_value=1800, max_value=2030,
+                                      value=existing.year_built or 1990)
+        status = st.selectbox("Status", ["Measured", "Quoted", "Contracted", "Completed"],
+                               index=["Measured", "Quoted", "Contracted", "Completed"]
+                               .index(existing.status if existing else "Measured"))
+
+    st.markdown('<div class="section-header">Property Address</div>', unsafe_allow_html=True)
+    ad1, ad2, ad3, ad4 = st.columns([3, 2, 1, 1])
+    street = ad1.text_input("Street Address", value=existing.street_address if existing else "")
+    city = ad2.text_input("City", value=existing.city if existing else "")
+    state = ad3.text_input("State", value=existing.state if existing else "")
+    zip_code = ad4.text_input("ZIP", value=existing.zip_code if existing else "")
+
+    # ---- Images ----
+    st.markdown('<div class="section-header">Property Images</div>', unsafe_allow_html=True)
+    st.caption("Upload aerial, satellite, or on-site roof photos. More images = better AI analysis accuracy.")
+
+    uploaded_files = st.file_uploader(
+        "Upload roof images (JPG/PNG)",
+        type=["jpg", "jpeg", "png"],
+        accept_multiple_files=True,
+        key="img_uploader",
+    )
+    new_image_bytes = [(f.name, f.read()) for f in (uploaded_files or [])]
+
+    # Show existing images (edit mode)
+    if existing_images:
+        st.caption(f"{len(existing_images)} existing image(s) on file:")
+        img_cols = st.columns(min(len(existing_images), 4))
+        for i, (label, raw) in enumerate(existing_images):
+            img_cols[i % 4].image(raw, caption=label, use_container_width=True)
+
+    if new_image_bytes:
+        st.caption(f"{len(new_image_bytes)} new image(s) selected:")
+        img_cols2 = st.columns(min(len(new_image_bytes), 4))
+        for i, (name, raw) in enumerate(new_image_bytes):
+            img_cols2[i % 4].image(raw, caption=name, use_container_width=True)
+
+    # ---- AI Analysis ----
+    st.markdown('<div class="section-header">AI Roof Analysis</div>', unsafe_allow_html=True)
+    all_raw_images = [raw for _, raw in (existing_images + new_image_bytes)]
+    full_address = f"{street}, {city}, {state} {zip_code}".strip(", ")
+
+    ai_col1, ai_col2 = st.columns(2)
+    with ai_col1:
+        if all_raw_images:
+            if st.button("🔍 Analyse Images with AI", use_container_width=True, type="secondary"):
+                if not os.getenv("ANTHROPIC_API_KEY"):
+                    st.error("Add your Anthropic API key in Settings first.")
+                else:
+                    with st.spinner("Claude is analysing your roof images..."):
+                        meas = analyse_multiple_images(all_raw_images)
+                        meas.analysis_source = "image_upload"
+                    st.session_state.ai_measurements = meas
+                    st.success(f"Analysis complete! Confidence: **{meas.ai_confidence}** — review and edit below.")
+                    st.rerun()
+        else:
+            st.info("Upload images above to enable AI analysis.", icon="📷")
+
+    with ai_col2:
+        if full_address.strip(", "):
+            if st.button("📍 Estimate from Address", use_container_width=True, type="secondary"):
+                if not os.getenv("ANTHROPIC_API_KEY"):
+                    st.error("Add your Anthropic API key in Settings first.")
+                else:
+                    with st.spinner("Estimating from address (low accuracy without imagery)..."):
+                        meas = estimate_from_address(full_address)
+                    st.session_state.ai_measurements = meas
+                    st.warning("Address-based estimate — confidence is Low. Review and edit all fields below.")
+                    st.rerun()
+
+    if st.session_state.ai_measurements:
+        m = st.session_state.ai_measurements
+        st.success(
+            f"✅ AI results imported below — source: **{m.analysis_source}**, "
+            f"confidence: **{m.ai_confidence}**. Edit any field before saving."
+        )
+
+    # ---- Measurement Form ----
+    init_meas = st.session_state.ai_measurements or (existing.roof_measurement if existing else None)
+    meas_dict = _measurement_form("prop", init_meas)
+
+    # ---- Notes ----
+    prop_notes = st.text_area(
+        "Property Notes",
+        value=existing.property_notes if existing else "",
+        height=80,
+    )
+
+    # ---- Save / Actions ----
+    st.divider()
+    save_col, back_col = st.columns([1, 4])
+
+    with save_col:
+        if st.button("💾 Save Property", type="primary", use_container_width=True):
+            now = _now()
+            prop_id = existing.property_id if existing else str(uuid.uuid4())[:8].upper()
+            created = existing.created_at if existing else now
+
+            prop = Property(
+                property_id=prop_id,
+                created_at=created,
+                updated_at=now,
+                status=status,
+                owner_name=owner_name,
+                owner_phone=owner_phone,
+                owner_email=owner_email,
+                street_address=street,
+                city=city,
+                state=state,
+                zip_code=zip_code,
+                property_type=prop_type,
+                year_built=year_built if year_built else None,
+                roof_measurement=RoofMeasurement(**meas_dict) if meas_dict["total_area_sqft"] else None,
+                image_count=len(all_raw_images),
+                property_notes=prop_notes,
+            )
+            db.save_property(prop)
+
+            # Save images
+            all_to_store = existing_images + new_image_bytes
+            if all_to_store:
+                db.save_images(prop_id, all_to_store)
+
+            st.success(f"Property saved! ID: {prop_id}")
+            _set_view("property_detail", prop_id)
+            st.rerun()
+
+    with back_col:
+        if st.button("← Back to list"):
+            _set_view("list")
+            st.rerun()
+
+
+# ==================================================================
+# VIEW: Property Detail
+# ==================================================================
+
+def view_property_detail():
+    pid = st.session_state.selected_pid
+    prop = db.get_property(pid)
+    if not prop:
+        st.error("Property not found.")
+        _set_view("list")
+        return
+
+    images = db.get_images(pid)
+    m = prop.roof_measurement
+
+    # Header
+    st.markdown(
+        f"## {prop.full_address or prop.owner_name}  "
+        f"{_badge(prop.status)}",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Owner: {prop.owner_name or '—'}  |  "
+        f"{prop.property_type}  |  "
+        f"Added: {prop.created_at[:10]}"
+    )
+
+    # Action bar
+    ac1, ac2, ac3, ac4, ac5 = st.columns(5)
+    with ac1:
+        if st.button("✏️ Edit Property", use_container_width=True):
+            _set_view("edit_property", pid)
+            st.rerun()
+    with ac2:
+        if st.button("📄 Measurement Report", use_container_width=True):
+            with st.spinner("Generating report..."):
+                pdf = generate_measurement_report(
+                    prop, images,
                     company_name=company_name,
                     company_phone=company_phone,
                     company_license=company_license,
                 )
-            st.success("PDF ready!")
+                st.session_state.meas_pdf = pdf
+            st.rerun()
+    with ac3:
+        if st.button("💼 Create Quote", use_container_width=True, type="primary"):
+            if not m:
+                st.error("Save measurements first before creating a quote.")
+            else:
+                st.session_state.view = "create_quote"
+                st.rerun()
+    with ac4:
+        if st.button("← All Properties", use_container_width=True):
+            _set_view("list")
+            st.rerun()
+    with ac5:
+        if st.button("🗑️ Delete", use_container_width=True):
+            db.delete_property(pid)
+            _set_view("list")
+            st.rerun()
 
-    if st.session_state.current_pdf:
-        with pdf_col2:
-            st.download_button(
-                label="⬇️ Download PDF Quote",
-                data=st.session_state.current_pdf,
-                file_name=f"quote_{q.quote_id}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
+    if st.session_state.meas_pdf:
+        st.download_button(
+            "⬇️ Download Measurement Report PDF",
+            data=st.session_state.meas_pdf,
+            file_name=f"measurement_report_{pid}.pdf",
+            mime="application/pdf",
+        )
+
+    st.divider()
+
+    tab_meas, tab_images, tab_info = st.tabs(["📐 Measurements", "🖼️ Images", "ℹ️ Property Info"])
+
+    # ------ Measurements tab ------
+    with tab_meas:
+        if not m:
+            st.info("No measurements yet. Click **✏️ Edit Property** to add them.")
+        else:
+            adj_sq = round(m.total_squares * m.pitch_multiplier * (1 + m.waste_factor_pct), 2)
+            src_map = {
+                "image_upload": "🔍 AI — Image Upload",
+                "address_lookup": "📍 AI — Address Estimate",
+                "manual_input": "✋ Manual Entry",
+            }
+            st.caption(
+                f"Source: {src_map.get(m.analysis_source, m.analysis_source)}  |  "
+                f"Confidence: {m.ai_confidence or '—'}"
             )
 
-    with st.expander("Raw Quote JSON"):
-        st.json(q.model_dump())
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            mc1.metric("Footprint Area", f"{m.total_area_sqft:,.0f} sq ft")
+            mc2.metric("Total Squares", f"{m.total_squares:.2f} sq")
+            mc3.metric("Adjusted Squares", f"{adj_sq:.2f} sq")
+            mc4.metric("Pitch", m.pitch)
+
+            mc5, mc6, mc7, mc8 = st.columns(4)
+            mc5.metric("Complexity", m.complexity)
+            mc6.metric("Stories", m.number_of_stories)
+            mc7.metric("Existing Layers", m.layers_existing)
+            mc8.metric("Waste Factor", f"{m.waste_factor_pct * 100:.0f}%")
+
+            st.markdown("**Linear Footage**")
+            lf_data = {
+                "Feature": ["Perimeter", "Ridges", "Valleys", "Hips", "Eaves"],
+                "Length (LF)": [
+                    f"{m.perimeter_lf:.1f}",
+                    f"{m.ridges_lf:.1f}",
+                    f"{m.valleys_lf:.1f}",
+                    f"{m.hips_lf:.1f}",
+                    f"{m.eaves_lf:.1f}",
+                ],
+            }
+            st.dataframe(pd.DataFrame(lf_data), use_container_width=False, hide_index=True)
+
+            if m.notes:
+                st.markdown(f"**Notes:** {m.notes}")
+
+    # ------ Images tab ------
+    with tab_images:
+        if not images:
+            st.info("No images on file. Edit the property to upload images.")
+        else:
+            cols = st.columns(min(len(images), 3))
+            for i, (label, raw) in enumerate(images):
+                cols[i % 3].image(raw, caption=label, use_container_width=True)
+
+    # ------ Info tab ------
+    with tab_info:
+        info_data = {
+            "Field": ["Property ID", "Owner", "Phone", "Email",
+                       "Type", "Year Built", "Status", "Created", "Updated"],
+            "Value": [
+                prop.property_id, prop.owner_name or "—", prop.owner_phone or "—",
+                prop.owner_email or "—", prop.property_type,
+                str(prop.year_built) if prop.year_built else "—",
+                prop.status, prop.created_at[:10], prop.updated_at[:10],
+            ],
+        }
+        st.dataframe(pd.DataFrame(info_data), use_container_width=False, hide_index=True)
+        if prop.property_notes:
+            st.markdown(f"**Notes:** {prop.property_notes}")
+
+
+# ==================================================================
+# VIEW: Create Quote (from saved property)
+# ==================================================================
+
+def view_create_quote():
+    pid = st.session_state.selected_pid
+    prop = db.get_property(pid)
+    if not prop or not prop.roof_measurement:
+        st.error("No measurements found. Save measurements first.")
+        _set_view("list")
+        return
+
+    st.markdown(f"## 💼 Create Quote — {prop.full_address}")
+
+    if st.button("← Back to Property"):
+        st.session_state.view = "property_detail"
+        st.rerun()
+
+    st.divider()
+
+    # Material + region
+    mat_display = {mat.name: slug for slug, mat in MATERIAL_OPTIONS.items()}
+    selected_mat_name = st.radio("Select Material", list(mat_display.keys()),
+                                  index=1, horizontal=True)
+    selected_slug = mat_display[selected_mat_name]
+    mat = MATERIAL_OPTIONS[selected_slug]
+
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    mc1.metric("Material / sq", f"${mat.material_cost_per_square:,.0f}")
+    mc2.metric("Labor / sq", f"${mat.labor_cost_per_square:,.0f}")
+    mc3.metric("Warranty", f"{mat.warranty_years} yrs")
+    mc4.metric("Lifespan", f"{mat.lifespan_years} yrs")
+    st.caption(mat.description)
+
+    region = st.selectbox("Region / Market", list(REGIONAL_LABOR_MULTIPLIERS.keys()), index=3)
+
+    if st.button("⚡ Generate Quote", type="primary"):
+        with st.spinner("Generating quote..."):
+            quote = generate_quote(
+                prop=prop,
+                material_slug=selected_slug,
+                region=region,
+                company_info={"name": company_name, "phone": company_phone, "license": company_license},
+                tax_rate=tax_rate,
+            )
+            st.session_state.quote_preview = quote
+            st.session_state.quote_pdf = None
+        st.rerun()
+
+    if st.session_state.quote_preview:
+        q = st.session_state.quote_preview
+        m = q.roof_measurement
+        st.divider()
+        st.success(f"Quote #{q.quote_id}  —  Valid until {q.validity_date}")
+
+        if q.scope_of_work:
+            st.markdown(f"*{q.scope_of_work}*")
+
+        df = pd.DataFrame([
+            {"Category": i.category, "Description": i.description,
+             "Qty": f"{i.quantity:.2f}", "Unit": i.unit,
+             "Unit Price": f"${i.unit_price:,.2f}", "Total": f"${i.total:,.2f}"}
+            for i in q.line_items
+        ])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        tc1, tc2, tc3 = st.columns(3)
+        tc1.metric("Subtotal", f"${q.subtotal:,.2f}")
+        tc2.metric(f"Tax ({q.tax_rate*100:.1f}%)", f"${q.tax_amount:,.2f}")
+        tc3.metric("TOTAL", f"${q.total:,.2f}")
+
+        qp1, qp2 = st.columns(2)
+        with qp1:
+            if st.button("📄 Build Quote PDF", use_container_width=True):
+                with st.spinner("Rendering PDF..."):
+                    st.session_state.quote_pdf = generate_quote_pdf(
+                        q, company_name, company_phone, company_license
+                    )
+                st.rerun()
+        if st.session_state.quote_pdf:
+            with qp2:
+                st.download_button(
+                    "⬇️ Download Quote PDF",
+                    data=st.session_state.quote_pdf,
+                    file_name=f"quote_{q.quote_id}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+
+
+# ==================================================================
+# Router
+# ==================================================================
+
+view = st.session_state.view
+
+if view == "list":
+    view_list()
+elif view in ("new_property", "edit_property"):
+    view_new_or_edit()
+elif view == "property_detail":
+    view_property_detail()
+elif view == "create_quote":
+    view_create_quote()
+else:
+    view_list()
