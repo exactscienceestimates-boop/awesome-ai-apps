@@ -8,7 +8,6 @@ from typing import Optional
 
 from agno.agent import Agent
 from agno.models.anthropic import Claude
-from agno.models.nebius import Nebius
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
@@ -66,10 +65,7 @@ def _make_analysis_agent() -> Agent:
 def _make_estimator_agent() -> Agent:
     return Agent(
         name="Material Estimator Agent",
-        model=Nebius(
-            id="meta-llama/Llama-3.3-70B-Instruct",
-            api_key=os.getenv("NEBIUS_API_KEY"),
-        ),
+        model=Claude(id="claude-haiku-4-5-20251001", api_key=os.getenv("ANTHROPIC_API_KEY")),
         markdown=False,
         description=(
             "You are a roofing materials calculator. Given roof measurements and a selected "
@@ -101,10 +97,7 @@ def _make_estimator_agent() -> Agent:
 def _make_composer_agent() -> Agent:
     return Agent(
         name="Quote Composer Agent",
-        model=Nebius(
-            id="meta-llama/Llama-3.3-70B-Instruct",
-            api_key=os.getenv("NEBIUS_API_KEY"),
-        ),
+        model=Claude(id="claude-haiku-4-5-20251001", api_key=os.getenv("ANTHROPIC_API_KEY")),
         markdown=False,
         description=(
             "You are a professional roofing quote specialist. You write a concise, "

@@ -45,7 +45,7 @@ st.markdown(
             🏠 AI Roof Quote Generator
         </h1>
         <p style="color:#666; margin-top:6px;">
-            Powered by <strong>Claude claude-sonnet-4-6</strong> vision + <strong>Agno</strong> multi-agent workflow
+            Powered by <strong>Claude</strong> (Sonnet vision + Haiku estimation) via <strong>Agno</strong> — one API key
         </p>
     </div>
     """,
@@ -63,18 +63,11 @@ with st.sidebar:
             "Anthropic API Key",
             value=_secret("ANTHROPIC_API_KEY"),
             type="password",
-            help="Required for roof image analysis (Claude vision)",
+            help="Single key for all three agents (vision, estimation, composition)",
         )
-        nebius_key = st.text_input(
-            "Nebius API Key",
-            value=_secret("NEBIUS_API_KEY"),
-            type="password",
-            help="Required for estimation & quote composition agents",
-        )
-        if st.button("Save Keys", use_container_width=True):
+        if st.button("Save Key", use_container_width=True):
             os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-            os.environ["NEBIUS_API_KEY"] = nebius_key
-            st.success("Keys saved for this session.")
+            st.success("Key saved for this session.")
 
     st.divider()
 
@@ -101,9 +94,9 @@ with st.sidebar:
     st.divider()
     st.markdown(
         "**Agents:**\n"
-        "- 🔍 Roof Analysis (Claude vision)\n"
-        "- 📐 Material Estimator (Llama-3.3-70B)\n"
-        "- ✍️ Quote Composer (Llama-3.3-70B)"
+        "- 🔍 Roof Analysis (Claude Sonnet — vision)\n"
+        "- 📐 Material Estimator (Claude Haiku)\n"
+        "- ✍️ Quote Composer (Claude Haiku)"
     )
 
 # ------------------------------------------------------------------
@@ -258,14 +251,11 @@ if generate_btn:
         st.error("Please upload a roof image first.")
     elif input_mode == "address" and not address_str:
         st.error("Please enter a property address.")
-    elif not os.getenv("NEBIUS_API_KEY") and not nebius_key:
-        st.error("Nebius API key is required. Add it in the sidebar.")
+    elif not os.getenv("ANTHROPIC_API_KEY") and not anthropic_key:
+        st.error("Anthropic API key is required. Add it in the sidebar.")
     else:
-        # Ensure env vars are set from sidebar inputs
         if anthropic_key:
             os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-        if nebius_key:
-            os.environ["NEBIUS_API_KEY"] = nebius_key
 
         customer_info = {
             "name": cust_name,
