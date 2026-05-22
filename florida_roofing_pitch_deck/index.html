@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Florida Roofing Market Entry — Pitch Deck 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #080d1a;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --cyan: #00d4ff;
+    --orange: #ff6b35;
+    --gold: #ffd700;
+    --green: #00e676;
+    --red: #ff5252;
+    --text: #f0f4ff;
+    --muted: #7b8db0;
+    --cyan-dim: rgba(0,212,255,0.12);
+    --orange-dim: rgba(255,107,53,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+
+  /* ── Slide container ── */
+  #deck { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 48px 60px;
+    opacity: 0; pointer-events: none;
+    transform: translateX(60px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; transform: translateX(0); }
+  .slide.exit-left { opacity: 0; transform: translateX(-60px); }
+
+  /* ── Nav ── */
+  #nav {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; z-index: 100;
+    background: rgba(8,13,26,0.85); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: 40px; padding: 10px 18px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); cursor: pointer; transition: all 0.25s;
+  }
+  .dot.active { background: var(--cyan); transform: scale(1.4); }
+  #nav button {
+    background: none; border: none; color: var(--muted); font-size: 18px;
+    cursor: pointer; padding: 2px 8px; transition: color 0.2s;
+  }
+  #nav button:hover { color: var(--cyan); }
+  #slide-counter { color: var(--muted); font-size: 12px; min-width: 40px; text-align: center; }
+
+  /* ── Typography ── */
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px;
+  }
+  .tag-cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+  .tag-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,107,53,0.25); }
+  .tag-gold { background: rgba(255,215,0,0.1); color: var(--gold); border: 1px solid rgba(255,215,0,0.25); }
+  .tag-green { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+  h1 { font-size: clamp(32px, 5vw, 60px); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(22px, 3.5vw, 40px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  h3 { font-size: clamp(16px, 2vw, 22px); font-weight: 600; }
+  .sub { font-size: clamp(14px, 1.6vw, 18px); color: var(--muted); line-height: 1.6; max-width: 700px; }
+  .grad-cyan { background: linear-gradient(135deg, var(--cyan), #4facfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .grad-orange { background: linear-gradient(135deg, var(--orange), #f9d423); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .grad-both { background: linear-gradient(135deg, var(--cyan) 0%, #a78bfa 50%, var(--orange) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px 28px;
+  }
+  .card-cyan { border-color: rgba(0,212,255,0.25); background: rgba(0,212,255,0.04); }
+  .card-orange { border-color: rgba(255,107,53,0.25); background: rgba(255,107,53,0.04); }
+  .card-gold { border-color: rgba(255,215,0,0.2); background: rgba(255,215,0,0.04); }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: 100%; }
+
+  /* ── Stat blocks ── */
+  .stat-block { text-align: center; }
+  .stat-num { font-size: clamp(28px, 4vw, 48px); font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; gap: 0; width: 100%; }
+  .tl-step {
+    flex: 1; text-align: center; position: relative;
+    padding: 12px 8px;
+  }
+  .tl-step::before {
+    content: ''; position: absolute; top: 20px; left: 0; right: 50%;
+    height: 2px; background: var(--border);
+  }
+  .tl-step::after {
+    content: ''; position: absolute; top: 20px; right: 0; left: 50%;
+    height: 2px; background: var(--border);
+  }
+  .tl-step:first-child::before, .tl-step:last-child::after { display: none; }
+  .tl-dot {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; margin: 0 auto 8px;
+    position: relative; z-index: 1;
+  }
+  .tl-dot-cyan { background: var(--cyan-dim); border: 2px solid var(--cyan); color: var(--cyan); }
+  .tl-dot-orange { background: var(--orange-dim); border: 2px solid var(--orange); color: var(--orange); }
+  .tl-title { font-size: 12px; font-weight: 600; }
+  .tl-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Progress bar ── */
+  .progress-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* ── Comparison table ── */
+  .comp-table { width: 100%; border-collapse: collapse; }
+  .comp-table th, .comp-table td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--border); text-align: left; }
+  .comp-table th { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table .best { color: var(--green); font-weight: 700; }
+  .comp-table .worst { color: var(--red); }
+
+  /* ── Pros/Cons ── */
+  .pro-con-list { list-style: none; }
+  .pro-con-list li { padding: 5px 0; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+  .pro-con-list li::before { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .pro-list li::before { content: '✓'; color: var(--green); }
+  .con-list li::before { content: '✗'; color: var(--red); }
+
+  /* ── Risk meter ── */
+  .risk-bar { height: 8px; border-radius: 4px; margin-top: 6px; }
+
+  /* ── Calculator ── */
+  .calc-input { width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
+  .calc-input:focus { border-color: var(--orange); }
+  .calc-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .calc-result { font-size: 22px; font-weight: 800; color: var(--orange); }
+  .calc-result-label { font-size: 11px; color: var(--muted); }
+
+  /* ── Score pill ── */
+  .score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .score-label { width: 160px; flex-shrink: 0; color: var(--muted); }
+  .score-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; }
+  .score-val { width: 30px; text-align: right; font-weight: 700; font-size: 12px; }
+
+  /* ── Decorative background ── */
+  .bg-glow {
+    position: fixed; pointer-events: none; border-radius: 50%; filter: blur(120px); opacity: 0.06;
+  }
+  .bg-glow-1 { width: 600px; height: 600px; background: var(--cyan); top: -150px; right: -100px; }
+  .bg-glow-2 { width: 500px; height: 500px; background: var(--orange); bottom: -100px; left: -80px; }
+
+  /* ── Icon badges ── */
+  .icon-badge { font-size: 32px; margin-bottom: 8px; display: block; }
+
+  /* ── Pill toggle ── */
+  .toggle-group { display: flex; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 30px; padding: 4px; gap: 4px; }
+  .toggle-btn { padding: 6px 18px; border-radius: 24px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; background: none; color: var(--muted); }
+  .toggle-btn.active-cyan { background: var(--cyan); color: #000; }
+  .toggle-btn.active-orange { background: var(--orange); color: #fff; }
+
+  /* ── Chart wrapper ── */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ── Slide-specific layouts ── */
+  #slide-1 { background: radial-gradient(ellipse at 70% 50%, rgba(0,212,255,0.06) 0%, transparent 60%); }
+  #slide-1 .hero-sub { font-size: clamp(16px, 2vw, 20px); color: var(--muted); margin-top: 12px; }
+  #slide-1 .meta-pills { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+  #slide-1 .meta-pill { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+
+  /* floating decorations */
+  .float-tag {
+    position: absolute; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    animation: floatY 3s ease-in-out infinite alternate;
+  }
+  @keyframes floatY { from { transform: translateY(0px); } to { transform: translateY(-10px); } }
+
+  .divider { width: 100%; height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .slide { padding: 32px 24px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background glows -->
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div id="deck">
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 1 · Title
+  ═══════════════════════════════════════════════ -->
+  <div class="slide active" id="slide-1">
+    <div style="max-width:900px;width:100%">
+      <div class="tag tag-gold">Florida Market Entry Strategy · 2026</div>
+      <h1 style="margin-top:8px">
+        <span class="grad-both">Roofing Industry</span><br>
+        Pitch Deck
+      </h1>
+      <p class="hero-sub">Two paths to capturing Florida's $6.7B roofing market —<br>Build from scratch or acquire via SBA loan.</p>
+      <div class="meta-pills">
+        <span class="meta-pill">🌴 Florida Market</span>
+        <span class="meta-pill">🏗️ Option 1: Build</span>
+        <span class="meta-pill">🤝 Option 2: Acquire</span>
+        <span class="meta-pill">📊 Data-Driven Analysis</span>
+        <span class="meta-pill">💰 Financial Projections</span>
+      </div>
+      <div style="margin-top:40px; display:flex; gap:32px; flex-wrap:wrap;">
+        <div class="stat-block">
+          <div class="stat-num grad-cyan">$6.7B</div>
+          <div class="stat-label">FL Market Size 2026</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num" style="color:var(--gold)">12%</div>
+          <div class="stat-label">of US Roofing Revenue</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num grad-orange">8,228</div>
+          <div class="stat-label">Active Businesses</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num" style="color:var(--green)">2.2%</div>
+          <div class="stat-label">Annual Growth Rate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 2 · Florida Market Overview
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-2">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-cyan">Market Overview</div>
+      <h2>Florida Is the <span class="grad-cyan">#1 State</span> for Roofing</h2>
+      <p class="sub" style="margin:8px 0 24px">The Sunshine State represents 12% of all U.S. roofing revenue — driven by year-round construction, an aging housing stock, and a hurricane-intensive climate.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="grid-2" style="gap:12px; margin-bottom:16px">
+            <div class="card card-cyan" style="text-align:center">
+              <div class="stat-num grad-cyan">$6.7B</div>
+              <div class="stat-label">2026 Market Size</div>
+            </div>
+            <div class="card" style="text-align:center">
+              <div class="stat-num" style="color:var(--gold)">8,228</div>
+              <div class="stat-label">Active Businesses</div>
+            </div>
+            <div class="card" style="text-align:center">
+              <div class="stat-num" style="color:var(--green)">34,363</div>
+              <div class="stat-label">Industry Employees</div>
+            </div>
+            <div class="card" style="text-align:center">
+              <div class="stat-num grad-orange">$340K</div>
+              <div class="stat-label">Rev / Employee</div>
+            </div>
+          </div>
+          <div class="card" style="padding:18px 20px">
+            <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--muted)">MARKET GROWTH TRAJECTORY</div>
+            <div class="chart-wrap" style="height:140px"><canvas id="chart-growth"></canvas></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px; padding:20px 24px">
+            <div style="font-size:13px; font-weight:600; margin-bottom:16px; color:var(--muted)">FL vs. US ROOFING MARKET SHARE</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="chart-market-share"></canvas></div>
+          </div>
+          <div class="card card-gold">
+            <div style="font-size:12px; font-weight:700; color:var(--gold); letter-spacing:0.08em; margin-bottom:8px">KEY INSIGHT</div>
+            <p style="font-size:13px; line-height:1.6">Florida had <strong>17</strong> companies in the national Top 100 in 2024 — a historically high count driven by active hurricane seasons. Even in a quieter 2025, <strong>9 FL companies</strong> remained on the list. Fragmented market = significant room for a well-capitalized entrant.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 3 · Market Drivers
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-3">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-orange">Market Drivers</div>
+      <h2>Why Florida Roofing <span class="grad-orange">Outperforms</span></h2>
+      <p class="sub" style="margin:8px 0 24px">Multiple structural tailwinds create consistent, durable demand regardless of season.</p>
+      <div class="grid-3">
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">🌀</span>
+          <h3 style="margin-bottom:6px">Hurricane Season</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5">Central FL saw an <strong style="color:var(--text)">18% surge in roof claims</strong> in early 2026. Each major storm event generates $500M–$2B in roofing work statewide.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:90%;background:linear-gradient(90deg,#ff6b35,#f9d423)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: Very High</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">📋</span>
+          <h3 style="margin-bottom:6px">Insurance Requirements</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5">Insurers now require roof replacement on homes <strong style="color:var(--text)">15–20 years old</strong>, even without visible damage. Florida's 25% replacement rule drives full re-roofs.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:80%;background:linear-gradient(90deg,#4facfe,#00d4ff)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: High</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">🏘️</span>
+          <h3 style="margin-bottom:6px">Aging Housing Stock</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5">Millions of Florida roofs built in the 1990s–2000s boom are now <strong style="color:var(--text)">hitting replacement age</strong>. Lifespan of asphalt shingles: 20–25 years.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:75%;background:linear-gradient(90deg,#a78bfa,#6c63ff)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: High</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">🌱</span>
+          <h3 style="margin-bottom:6px">State Grant Programs</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5"><strong style="color:var(--text)">My Safe Florida Home</strong> grants up to $10,000 per household for hurricane mitigation improvements — direct roofing stimulus.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:60%;background:linear-gradient(90deg,#00e676,#69f0ae)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: Medium</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">📈</span>
+          <h3 style="margin-bottom:6px">Population Growth</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5">Florida remains a top destination for domestic migration. New residential construction + re-roofing demand = <strong style="color:var(--text)">dual revenue streams</strong>.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:70%;background:linear-gradient(90deg,#ffd700,#ffb300)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: High</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <span class="icon-badge">⚖️</span>
+          <h3 style="margin-bottom:6px">Tort Reform Tailwind</h3>
+          <p style="font-size:13px; color:var(--muted); line-height:1.5">2023 landmark tort reform eliminated AOB abuse. <strong style="color:var(--text)">Insurance carriers re-entering Florida</strong>, softening market, 5–10% rate cuts projected in 2026.</p>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" style="width:55%;background:linear-gradient(90deg,#ff6b6b,#ff8e53)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Impact Level: Medium</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 4 · Two Paths Overview
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-4">
+    <div style="max-width:1000px;width:100%">
+      <div class="tag tag-gold">Strategic Decision</div>
+      <h2>Two Routes to <span class="grad-both">Market Entry</span></h2>
+      <p class="sub" style="margin:8px 0 28px">Each path has a fundamentally different risk profile, capital requirement, and timeline to profitability.</p>
+      <div class="grid-2">
+        <div class="card card-cyan" style="padding:28px 32px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="font-size:36px">🏗️</div>
+            <div>
+              <div class="tag tag-cyan" style="margin-bottom:4px">Option 1</div>
+              <h3>Build from Scratch</h3>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">Launch a new Florida roofing company — assemble a crew, build brand awareness, and grow organically from zero revenue.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="text-align:center;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--cyan)">$50–80K</div>
+              <div style="font-size:11px;color:var(--muted)">Startup Capital</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--cyan)">3–6 mo</div>
+              <div style="font-size:11px;color:var(--muted)">To First Revenue</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--cyan)">12–24 mo</div>
+              <div style="font-size:11px;color:var(--muted)">Break-Even</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--cyan)">Low</div>
+              <div style="font-size:11px;color:var(--muted)">Entry Barrier</div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-orange" style="padding:28px 32px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="font-size:36px">🤝</div>
+            <div>
+              <div class="tag tag-orange" style="margin-bottom:4px">Option 2</div>
+              <h3>SBA Loan Acquisition</h3>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">Purchase an existing Florida roofing company using an SBA 7(a) loan — inherit revenue, crew, customers, and brand on Day 1.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="text-align:center;padding:10px;background:rgba(255,107,53,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--orange)">$75–300K</div>
+              <div style="font-size:11px;color:var(--muted)">Down Payment (10%)</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(255,107,53,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--orange)">Day 1</div>
+              <div style="font-size:11px;color:var(--muted)">Revenue Starts</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(255,107,53,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--orange)">Immediate</div>
+              <div style="font-size:11px;color:var(--muted)">Cash Flow</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:rgba(255,107,53,0.06);border-radius:8px">
+              <div style="font-size:20px;font-weight:800;color:var(--orange)">90–120d</div>
+              <div style="font-size:11px;color:var(--muted)">Close Timeline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-gold" style="margin-top:16px;padding:16px 24px;display:flex;align-items:center;gap:16px">
+        <span style="font-size:24px">💡</span>
+        <p style="font-size:13px;line-height:1.5"><strong style="color:var(--gold)">The Core Trade-Off:</strong> Building from scratch requires less capital upfront but takes 12–24 months to generate meaningful profit. Acquisition costs more and adds debt service, but generates cash flow from Day 1 and eliminates the riskiest startup phase.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 5 · Option 1: Build — Requirements
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-5">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-cyan">Option 1 · Build from Scratch</div>
+      <h2>Getting <span class="grad-cyan">Licensed & Operational</span> in Florida</h2>
+      <p class="sub" style="margin:8px 0 20px">Florida has some of the strictest roofing contractor licensing in the US — but it creates a defensible market.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card card-cyan" style="margin-bottom:14px">
+            <h3 style="margin-bottom:12px; color:var(--cyan)">📋 Licensing Requirements</h3>
+            <ul class="pro-con-list pro-list" style="gap:4px">
+              <li>Pass Florida DBPR Roofing Contractor Exam (2 parts)</li>
+              <li>4 years verifiable roofing experience minimum</li>
+              <li>FICO score ≥ 660 (or financial stability bond)</li>
+              <li>General liability insurance (required by law)</li>
+              <li>Workers' compensation coverage</li>
+              <li>Certified license = statewide operating privileges</li>
+            </ul>
+            <div class="divider"></div>
+            <div style="font-size:12px;color:var(--muted)">License fee: <strong style="color:var(--text)">$145–$245</strong> per biennial cycle</div>
+          </div>
+          <div class="card" style="padding:18px 20px">
+            <h3 style="margin-bottom:14px; font-size:14px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Launch Timeline</h3>
+            <div class="timeline">
+              <div class="tl-step">
+                <div class="tl-dot tl-dot-cyan">1</div>
+                <div class="tl-title">Month 1–2</div>
+                <div class="tl-sub">License &amp; LLC formation</div>
+              </div>
+              <div class="tl-step">
+                <div class="tl-dot tl-dot-cyan">2</div>
+                <div class="tl-title">Month 2–3</div>
+                <div class="tl-sub">Equipment, vehicle, insurance</div>
+              </div>
+              <div class="tl-step">
+                <div class="tl-dot tl-dot-cyan">3</div>
+                <div class="tl-title">Month 3–4</div>
+                <div class="tl-sub">Hire crew, marketing launch</div>
+              </div>
+              <div class="tl-step">
+                <div class="tl-dot tl-dot-cyan">4</div>
+                <div class="tl-title">Month 4–6</div>
+                <div class="tl-sub">First contracts close</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px; padding:20px">
+            <h3 style="margin-bottom:14px; font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em">Startup Cost Breakdown</h3>
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-startup-costs"></canvas></div>
+          </div>
+          <div class="card card-cyan" style="padding:18px 20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:600">Total Capital Required</span>
+              <span style="font-size:22px;font-weight:800;color:var(--cyan)">$50K–$80K</span>
+            </div>
+            <p style="font-size:12px;color:var(--muted)">Range: $42K–$127K depending on fleet size, territory, and marketing spend. Most operators launch successfully at the $60K–$75K mark.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 6 · Option 1: Financial Projections
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-6">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-cyan">Option 1 · Financial Projections</div>
+      <h2>Revenue &amp; Profit <span class="grad-cyan">Growth Model</span></h2>
+      <p class="sub" style="margin:8px 0 20px">Year 1 is survival. Year 2 is traction. Year 3+ is scale. Gross margins of 25–40%, net margins of 6–12%.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card" style="padding:20px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">5-Year Revenue Projection</div>
+            <div class="chart-wrap" style="height:220px"><canvas id="chart-scratch-revenue"></canvas></div>
+          </div>
+          <div class="grid-2" style="gap:12px">
+            <div class="card" style="text-align:center;padding:14px">
+              <div class="stat-num grad-cyan" style="font-size:28px">$350K</div>
+              <div class="stat-label">Year 1 Revenue</div>
+            </div>
+            <div class="card" style="text-align:center;padding:14px">
+              <div class="stat-num grad-cyan" style="font-size:28px">$900K</div>
+              <div class="stat-label">Year 2 Revenue</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-cyan" style="margin-bottom:14px">
+            <h3 style="color:var(--cyan);margin-bottom:14px">Year-by-Year Snapshot</h3>
+            <table class="comp-table" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Revenue</th>
+                  <th>Gross Margin</th>
+                  <th>Net Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Yr 1</td><td>$350K</td><td>28%</td><td style="color:var(--muted)">~Break-even</td></tr>
+                <tr><td>Yr 2</td><td>$900K</td><td>30%</td><td style="color:var(--green)">$54K–72K</td></tr>
+                <tr><td>Yr 3</td><td>$1.7M</td><td>32%</td><td style="color:var(--green)">$102K–204K</td></tr>
+                <tr><td>Yr 4</td><td>$2.6M</td><td>33%</td><td style="color:var(--green)">$156K–312K</td></tr>
+                <tr><td>Yr 5</td><td>$3.5M</td><td>35%</td><td style="color:var(--green)">$210K–420K</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card card-gold" style="padding:16px 20px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">KEY GROWTH LEVERS</div>
+            <ul class="pro-con-list pro-list" style="font-size:12px">
+              <li>Referral program: 40% of leads from word-of-mouth by Yr 2</li>
+              <li>Storm-chasing crews during hurricane season peaks</li>
+              <li>Insurance adjuster relationships → direct referrals</li>
+              <li>Commercial roofing adds 30%+ to top line by Yr 3</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 7 · Option 1: Risks
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-7">
+    <div style="max-width:1000px;width:100%">
+      <div class="tag tag-cyan">Option 1 · Risk Profile</div>
+      <h2>Building Risks &amp; <span class="grad-cyan">Mitigation</span></h2>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card" style="margin-bottom:14px; padding:20px 24px">
+            <h3 style="margin-bottom:16px;font-size:14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em">Risk Assessment</h3>
+            <div class="score-row">
+              <span class="score-label">Customer Acquisition</span>
+              <div class="score-track"><div class="score-fill" style="width:85%;background:var(--red)"></div></div>
+              <span class="score-val" style="color:var(--red)">High</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Cash Flow (Yr 1)</span>
+              <div class="score-track"><div class="score-fill" style="width:80%;background:var(--red)"></div></div>
+              <span class="score-val" style="color:var(--red)">High</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Licensing/Compliance</span>
+              <div class="score-track"><div class="score-fill" style="width:50%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Med</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Labor Recruitment</span>
+              <div class="score-track"><div class="score-fill" style="width:65%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Med</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Weather Dependency</span>
+              <div class="score-track"><div class="score-fill" style="width:40%;background:var(--green)"></div></div>
+              <span class="score-val" style="color:var(--green)">Low</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Competitive Pressure</span>
+              <div class="score-track"><div class="score-fill" style="width:70%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Med</span>
+            </div>
+          </div>
+          <div class="card" style="padding:18px 20px; text-align:center">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Overall Risk Score</div>
+            <div style="font-size:40px;font-weight:800;color:var(--gold)">6.2 / 10</div>
+            <div style="font-size:12px;color:var(--muted)">Moderate-High Risk</div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <h3 style="color:var(--red);margin-bottom:12px;font-size:15px">⚠️ Key Challenges</h3>
+            <ul class="pro-con-list con-list">
+              <li>55%+ of new roofing businesses fail within 5 years</li>
+              <li>Zero brand recognition — every lead must be earned</li>
+              <li>Florida license requires 4 years experience (or qualifying agent)</li>
+              <li>Insurance costs $8K–$23K/yr before first job</li>
+              <li>Seasonal volatility — slow summers, busy fall/winter</li>
+              <li>PE-backed competitors dominate marketing channels</li>
+            </ul>
+          </div>
+          <div class="card card-cyan">
+            <h3 style="color:var(--cyan);margin-bottom:12px;font-size:15px">✅ Mitigation Strategies</h3>
+            <ul class="pro-con-list pro-list">
+              <li>Partner with a licensed qualifying agent if experience gap exists</li>
+              <li>Start with commercial re-roofing (larger tickets, less competition)</li>
+              <li>Focus on a single high-demand county before expanding</li>
+              <li>Establish insurance adjuster relationships early</li>
+              <li>Build Google LSA + GMB presence in Month 1</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 8 · Option 2: SBA Acquisition Overview
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-8">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-orange">Option 2 · SBA Acquisition</div>
+      <h2>Buy a <span class="grad-orange">Cash-Flowing Business</span></h2>
+      <p class="sub" style="margin:8px 0 20px">The SBA 7(a) program is purpose-built for small business acquisitions — 10% down, up to $5M, 10-year terms. Most FL roofing deals close in the $500K–$3M range.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card card-orange" style="margin-bottom:14px">
+            <h3 style="color:var(--orange);margin-bottom:14px">SBA 7(a) Loan Parameters</h3>
+            <table class="comp-table" style="font-size:13px">
+              <tbody>
+                <tr><td style="color:var(--muted)">Max Loan Amount</td><td style="font-weight:700">$5,000,000</td></tr>
+                <tr><td style="color:var(--muted)">Down Payment</td><td style="font-weight:700;color:var(--green)">~10% of purchase price</td></tr>
+                <tr><td style="color:var(--muted)">Interest Rates</td><td style="font-weight:700">9.75% – 13.25%</td></tr>
+                <tr><td style="color:var(--muted)">Loan Term</td><td style="font-weight:700">Up to 10 years</td></tr>
+                <tr><td style="color:var(--muted)">Valuation Multiple</td><td style="font-weight:700">4x – 9x EBITDA</td></tr>
+                <tr><td style="color:var(--muted)">Target EBITDA Margin</td><td style="font-weight:700;color:var(--green)">≥15% is strong</td></tr>
+                <tr><td style="color:var(--muted)">Closing Timeline</td><td style="font-weight:700">90–120 days from LOI</td></tr>
+                <tr><td style="color:var(--muted)">Due Diligence Costs</td><td style="font-weight:700">$20K–$40K</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card card-gold" style="padding:16px 20px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">WHAT YOU INHERIT ON DAY 1</div>
+            <ul class="pro-con-list pro-list" style="font-size:12px">
+              <li>Existing revenue stream and customer base</li>
+              <li>Trained crews and established workflows</li>
+              <li>Supplier relationships and material pricing</li>
+              <li>Brand reputation and Google reviews</li>
+              <li>Equipment, vehicles, and inventory</li>
+              <li>Licenses already in place</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px;padding:20px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Acquisition Timeline</div>
+            <div class="timeline" style="flex-direction:column;gap:0">
+              <div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--orange-dim);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange);flex-shrink:0">1</div>
+                <div><div style="font-weight:600;font-size:13px">Target Identification (2–4 wk)</div><div style="font-size:12px;color:var(--muted)">Business brokers, BizBuySell, direct outreach</div></div>
+              </div>
+              <div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--orange-dim);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange);flex-shrink:0">2</div>
+                <div><div style="font-weight:600;font-size:13px">LOI &amp; Due Diligence (3–5 wk)</div><div style="font-size:12px;color:var(--muted)">Financial review, QoE, legal, operations audit</div></div>
+              </div>
+              <div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--orange-dim);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange);flex-shrink:0">3</div>
+                <div><div style="font-weight:600;font-size:13px">SBA Underwriting (5–7 wk)</div><div style="font-size:12px;color:var(--muted)">Lender review, valuation, SBA authorization</div></div>
+              </div>
+              <div style="display:flex;gap:14px;padding:10px 0">
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--orange-dim);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange);flex-shrink:0">4</div>
+                <div><div style="font-weight:600;font-size:13px">Close &amp; Transition (1–2 wk)</div><div style="font-size:12px;color:var(--muted)">Funding, key employee retention, customer intro</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:14px 18px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Typical All-In Entry Cost</div>
+            <div style="font-size:28px;font-weight:800;color:var(--orange)">$95K–$340K</div>
+            <div style="font-size:12px;color:var(--muted)">(10% down + $20–40K due diligence on a $500K–$3M deal)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 9 · Option 2: SBA Calculator
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-9">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-orange">Option 2 · Deal Modeler</div>
+      <h2>Interactive <span class="grad-orange">SBA Deal Calculator</span></h2>
+      <p class="sub" style="margin:8px 0 20px">Model your acquisition — adjust the purchase price and EBITDA to see real-time loan payments and Year 1 cash flow.</p>
+      <div class="grid-2" style="align-items:start">
+        <div class="card card-orange" style="padding:24px 28px">
+          <h3 style="color:var(--orange);margin-bottom:20px">Deal Inputs</h3>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div class="calc-label">Purchase Price</div>
+              <input type="range" id="calc-price" min="300000" max="3000000" step="50000" value="750000" style="width:100%;accent-color:var(--orange)">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>$300K</span><span id="price-display" style="color:var(--orange);font-weight:700">$750,000</span><span>$3M</span></div>
+            </div>
+            <div>
+              <div class="calc-label">Annual Revenue of Target</div>
+              <input type="range" id="calc-revenue" min="400000" max="5000000" step="50000" value="1000000" style="width:100%;accent-color:var(--orange)">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>$400K</span><span id="revenue-display" style="color:var(--orange);font-weight:700">$1,000,000</span><span>$5M</span></div>
+            </div>
+            <div>
+              <div class="calc-label">EBITDA Margin (%)</div>
+              <input type="range" id="calc-ebitda" min="8" max="25" step="1" value="15" style="width:100%;accent-color:var(--orange)">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>8%</span><span id="ebitda-display" style="color:var(--orange);font-weight:700">15%</span><span>25%</span></div>
+            </div>
+            <div>
+              <div class="calc-label">SBA Interest Rate (%)</div>
+              <input type="range" id="calc-rate" min="975" max="1325" step="25" value="1100" style="width:100%;accent-color:var(--orange)">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>9.75%</span><span id="rate-display" style="color:var(--orange);font-weight:700">11.00%</span><span>13.25%</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="grid-2" style="gap:12px;margin-bottom:14px">
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">Down Payment (10%)</div>
+              <div class="calc-result" id="calc-down">$75,000</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">SBA Loan Amount</div>
+              <div class="calc-result" id="calc-loan">$675,000</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">Monthly Payment</div>
+              <div class="calc-result" id="calc-monthly">$9,273</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">Annual Debt Service</div>
+              <div class="calc-result" id="calc-annual">$111,276</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">EBITDA (Annual)</div>
+              <div class="calc-result" id="calc-ebitda-val">$150,000</div>
+            </div>
+            <div class="card" style="text-align:center;padding:16px">
+              <div class="calc-result-label">Year 1 Free Cash Flow</div>
+              <div class="calc-result" id="calc-fcf" style="color:var(--green)">$38,724</div>
+            </div>
+          </div>
+          <div class="card" id="calc-signal" style="padding:14px 18px;text-align:center">
+            <div id="calc-signal-icon" style="font-size:28px;margin-bottom:4px">✅</div>
+            <div id="calc-signal-text" style="font-size:14px;font-weight:700;color:var(--green)">Deal appears serviceable</div>
+            <div id="calc-signal-sub" style="font-size:12px;color:var(--muted);margin-top:2px">Positive Year 1 cash flow with current parameters</div>
+          </div>
+          <div class="card card-gold" style="margin-top:12px;padding:12px 16px">
+            <div style="font-size:12px;color:var(--muted)"><strong style="color:var(--gold)">Valuation check:</strong> <span id="calc-multiple">5.0x</span> EBITDA multiple — <span id="calc-multiple-signal">within</span> the 4x–9x market range.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 10 · Option 2: Financials
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-10">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-orange">Option 2 · Financial Projections</div>
+      <h2>Acquisition Growth <span class="grad-orange">Model</span></h2>
+      <p class="sub" style="margin:8px 0 20px">Starting with $1M revenue base — grow through operational improvements, storm cycles, and geographic expansion.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card" style="padding:20px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Revenue + Net Income Projection</div>
+            <div class="chart-wrap" style="height:220px"><canvas id="chart-acq-revenue"></canvas></div>
+          </div>
+          <div class="grid-2" style="gap:12px">
+            <div class="card" style="text-align:center;padding:14px">
+              <div class="stat-num grad-orange" style="font-size:28px">$1M</div>
+              <div class="stat-label">Day 1 Revenue</div>
+            </div>
+            <div class="card" style="text-align:center;padding:14px">
+              <div class="stat-num grad-orange" style="font-size:28px">$3.8M</div>
+              <div class="stat-label">Year 5 Revenue</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-orange" style="margin-bottom:14px">
+            <h3 style="color:var(--orange);margin-bottom:14px">Year-by-Year Snapshot</h3>
+            <table class="comp-table" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Revenue</th>
+                  <th>EBITDA</th>
+                  <th>After Debt Svc</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Yr 1</td><td>$1.0M</td><td>$150K</td><td style="color:var(--green)">~$39K</td></tr>
+                <tr><td>Yr 2</td><td>$1.4M</td><td>$210K</td><td style="color:var(--green)">$99K</td></tr>
+                <tr><td>Yr 3</td><td>$2.0M</td><td>$300K</td><td style="color:var(--green)">$189K</td></tr>
+                <tr><td>Yr 4</td><td>$2.8M</td><td>$420K</td><td style="color:var(--green)">$309K</td></tr>
+                <tr><td>Yr 5</td><td>$3.8M</td><td>$570K</td><td style="color:var(--green)">$459K</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card card-gold" style="padding:16px 20px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">ACCELERATORS</div>
+            <ul class="pro-con-list pro-list" style="font-size:12px">
+              <li>Owner seller note can reduce initial debt service</li>
+              <li>Operational improvements → EBITDA expansion</li>
+              <li>Storm cycles provide surge revenue spikes</li>
+              <li>SBA loan fully amortizes in Yr 10 → pure profit</li>
+              <li>Business equity value grows alongside revenue</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 11 · Option 2: Risks
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-11">
+    <div style="max-width:1000px;width:100%">
+      <div class="tag tag-orange">Option 2 · Risk Profile</div>
+      <h2>Acquisition Risks &amp; <span class="grad-orange">Mitigation</span></h2>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card" style="margin-bottom:14px; padding:20px 24px">
+            <h3 style="margin-bottom:16px;font-size:14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em">Risk Assessment</h3>
+            <div class="score-row">
+              <span class="score-label">Customer Acquisition</span>
+              <div class="score-track"><div class="score-fill" style="width:20%;background:var(--green)"></div></div>
+              <span class="score-val" style="color:var(--green)">Low</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Cash Flow (Yr 1)</span>
+              <div class="score-track"><div class="score-fill" style="width:35%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Low</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Debt Service</span>
+              <div class="score-track"><div class="score-fill" style="width:75%;background:var(--red)"></div></div>
+              <span class="score-val" style="color:var(--red)">High</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Key Man Dependency</span>
+              <div class="score-track"><div class="score-fill" style="width:80%;background:var(--red)"></div></div>
+              <span class="score-val" style="color:var(--red)">High</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Hidden Liabilities</span>
+              <div class="score-track"><div class="score-fill" style="width:55%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Med</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Integration Risk</span>
+              <div class="score-track"><div class="score-fill" style="width:45%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">Med</span>
+            </div>
+          </div>
+          <div class="card" style="padding:18px 20px; text-align:center">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Overall Risk Score</div>
+            <div style="font-size:40px;font-weight:800;color:var(--green)">4.8 / 10</div>
+            <div style="font-size:12px;color:var(--muted)">Moderate Risk</div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <h3 style="color:var(--red);margin-bottom:12px;font-size:15px">⚠️ Key Challenges</h3>
+            <ul class="pro-con-list con-list">
+              <li>Tight Year 1 cash flow with full debt service burden</li>
+              <li>Previous owner may be the core of customer relationships</li>
+              <li>Quality of Earnings report may reveal hidden EBITDA adjustments</li>
+              <li>Higher upfront capital requirement ($95K–$340K all-in)</li>
+              <li>Due diligence fees sunk even if deal falls through</li>
+              <li>Interest rate environment: 9.75–13.25% is elevated</li>
+            </ul>
+          </div>
+          <div class="card card-orange">
+            <h3 style="color:var(--orange);margin-bottom:12px;font-size:15px">✅ Mitigation Strategies</h3>
+            <ul class="pro-con-list pro-list">
+              <li>Negotiate seller stay-on / transition agreement (6–12 mo)</li>
+              <li>Use a Quality of Earnings (QoE) firm — budget $8K–$15K</li>
+              <li>Negotiate seller earnout tied to Year 1 customer retention</li>
+              <li>Work with PLP SBA lender to cut 1–2 weeks from timeline</li>
+              <li>Prioritize targets with multiple customer relationships vs one crew leader</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 12 · Head-to-Head Comparison
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-12">
+    <div style="max-width:1100px;width:100%">
+      <div class="tag tag-gold">Side-by-Side Comparison</div>
+      <h2>Option 1 vs Option 2: <span class="grad-both">Full Scorecard</span></h2>
+      <div class="grid-2" style="align-items:start;margin-top:16px">
+        <div>
+          <table class="comp-table" style="font-size:13px">
+            <thead>
+              <tr>
+                <th>Factor</th>
+                <th style="color:var(--cyan)">🏗️ Build</th>
+                <th style="color:var(--orange)">🤝 Acquire</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color:var(--muted)">Entry Capital</td>
+                <td class="best">$50–80K</td>
+                <td>$95–340K</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Time to Revenue</td>
+                <td>3–6 months</td>
+                <td class="best">Day 1</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Break-Even</td>
+                <td>12–24 months</td>
+                <td class="best">Immediate</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Year 1 Revenue</td>
+                <td>$250–$500K</td>
+                <td class="best">$750K–$1.5M</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Year 3 Net Profit</td>
+                <td>$100–$200K</td>
+                <td class="best">$189–$300K</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Year 5 Revenue</td>
+                <td>$2.5–$3.5M</td>
+                <td class="best">$3.5–$4.5M</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Debt Obligation</td>
+                <td class="best">None</td>
+                <td class="worst">$675K+ loan</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Crew from Day 1</td>
+                <td class="worst">Must hire</td>
+                <td class="best">Inherited</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Brand Equity</td>
+                <td class="worst">Build from zero</td>
+                <td class="best">Existing</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Failure Risk</td>
+                <td class="worst">Higher (55%+)</td>
+                <td class="best">Lower</td>
+              </tr>
+              <tr>
+                <td style="color:var(--muted)">Overall Risk Score</td>
+                <td class="worst">6.2 / 10</td>
+                <td class="best">4.8 / 10</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="card" style="padding:20px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">5-Year Cumulative Net Profit Comparison</div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-compare"></canvas></div>
+          </div>
+          <div class="card" style="padding:20px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Capability Radar</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="chart-radar"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 13 · Decision Framework
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-13">
+    <div style="max-width:1000px;width:100%">
+      <div class="tag tag-gold">Decision Framework</div>
+      <h2>Which Path Is <span class="grad-both">Right for You?</span></h2>
+      <p class="sub" style="margin:8px 0 24px">The optimal choice depends on your available capital, risk tolerance, timeline, and existing roofing industry experience.</p>
+      <div class="grid-2" style="align-items:start">
+        <div class="card card-cyan" style="padding:24px 28px">
+          <div style="font-size:28px;margin-bottom:8px">🏗️</div>
+          <h3 style="color:var(--cyan);margin-bottom:12px">Choose Build if…</h3>
+          <ul class="pro-con-list pro-list">
+            <li>You have <strong>4+ years</strong> of roofing experience</li>
+            <li>You can deploy <strong>$60–80K</strong> comfortably</li>
+            <li>You want <strong>zero debt</strong> obligations</li>
+            <li>You have a specific niche or market angle</li>
+            <li>You're comfortable with an 18–24 month ramp period</li>
+            <li>You want complete control over culture &amp; systems</li>
+          </ul>
+          <div class="divider"></div>
+          <div class="card-cyan" style="padding:10px 0">
+            <div style="font-size:12px;color:var(--muted)">Best for:</div>
+            <div style="font-size:13px;font-weight:600">Experienced roofers becoming operators, or capital-constrained builders willing to play a longer game.</div>
+          </div>
+        </div>
+        <div class="card card-orange" style="padding:24px 28px">
+          <div style="font-size:28px;margin-bottom:8px">🤝</div>
+          <h3 style="color:var(--orange);margin-bottom:12px">Choose Acquire if…</h3>
+          <ul class="pro-con-list pro-list">
+            <li>You can deploy <strong>$100–350K</strong> for down + fees</li>
+            <li>You want cash flow from <strong>Day 1</strong></li>
+            <li>You're comfortable managing a team you didn't build</li>
+            <li>You're business-operations oriented vs. trade-skilled</li>
+            <li>You want to accelerate to scale faster</li>
+            <li>You can qualify for a <strong>FICO 650+</strong> SBA loan</li>
+          </ul>
+          <div class="divider"></div>
+          <div style="padding:10px 0">
+            <div style="font-size:12px;color:var(--muted)">Best for:</div>
+            <div style="font-size:13px;font-weight:600">Business buyers, entrepreneurs with capital, or investors looking for a high-cash-flow asset in a durable sector.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-gold" style="margin-top:16px; padding:14px 22px; display:flex; align-items:center; gap:14px">
+        <span style="font-size:28px">🔑</span>
+        <p style="font-size:13px; line-height:1.6"><strong style="color:var(--gold)">Hybrid strategy:</strong> Some operators use Option 1 (scratch build) to learn the market for 12–18 months at low risk, then use early profits + SBA to <em>acquire a competitor</em> and immediately 3-5x their scale. This is the path PE firms have used to consolidate the industry.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 14 · Recommendation
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-14">
+    <div style="max-width:950px;width:100%">
+      <div class="tag tag-gold">Recommendation</div>
+      <h2>The <span class="grad-both">Recommended Path</span></h2>
+      <p class="sub" style="margin:8px 0 24px">Based on Florida market conditions, SBA loan availability, and risk-adjusted returns — here is the data-driven recommendation.</p>
+      <div class="card card-orange" style="padding:32px 36px; margin-bottom:20px">
+        <div style="display:flex;align-items:flex-start;gap:20px">
+          <div style="font-size:48px;flex-shrink:0">🏆</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--orange);letter-spacing:0.08em;margin-bottom:6px">PRIMARY RECOMMENDATION</div>
+            <h2 style="font-size:28px;margin-bottom:10px">Option 2: SBA Acquisition<br><span style="font-size:18px;color:var(--muted);font-weight:400">Target a $500K–$1.5M revenue company at 4–6x EBITDA</span></h2>
+            <p style="font-size:14px;color:var(--muted);line-height:1.7">Florida's roofing market is growing but increasingly competitive at the bottom. Acquiring an established business with existing customers, crews, licenses, and brand equity eliminates the highest-mortality phase of the business lifecycle. With SBA 7(a) financing requiring only 10% down, the capital efficiency is compelling — and Day 1 cash flow funds the debt service.</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card" style="padding:18px;text-align:center">
+          <div style="font-size:28px;margin-bottom:6px">📊</div>
+          <div style="font-weight:700;margin-bottom:4px">Target Profile</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">$750K–$1.5M revenue, 15%+ EBITDA margin, 2+ crews, multi-county presence, Google reviews ≥ 4.2★</p>
+        </div>
+        <div class="card" style="padding:18px;text-align:center">
+          <div style="font-size:28px;margin-bottom:6px">💰</div>
+          <div style="font-weight:700;margin-bottom:4px">Capital to Deploy</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">$100–$200K total: 10% down + QoE + valuation + legal + working capital reserve</p>
+        </div>
+        <div class="card" style="padding:18px;text-align:center">
+          <div style="font-size:28px;margin-bottom:6px">📅</div>
+          <div style="font-weight:700;margin-bottom:4px">Timeline to Operate</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">90–120 days from LOI to closing. First paycheck arrives in month 4.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SLIDE 15 · Next Steps
+  ═══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-15">
+    <div style="max-width:950px;width:100%">
+      <div class="tag tag-green">Action Plan</div>
+      <h2>Next Steps to <span class="grad-cyan">Get Moving</span></h2>
+      <p class="sub" style="margin:8px 0 24px">A 90-day sprint from research to LOI.</p>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="card" style="padding:16px 20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,230,118,0.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">1</div>
+              <div>
+                <div style="font-weight:600;margin-bottom:3px">Weeks 1–2: Capital &amp; Credit Check</div>
+                <div style="font-size:12px;color:var(--muted)">Pull personal credit report. Target FICO 660+. Identify liquid capital available for down payment + reserves.</div>
+              </div>
+            </div>
+            <div class="card" style="padding:16px 20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,230,118,0.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">2</div>
+              <div>
+                <div style="font-weight:600;margin-bottom:3px">Weeks 2–4: SBA Lender Pre-Qualification</div>
+                <div style="font-size:12px;color:var(--muted)">Contact 2–3 SBA Preferred Lenders (PLP). Get pre-qualified letter. Understand max acquisition budget.</div>
+              </div>
+            </div>
+            <div class="card" style="padding:16px 20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,230,118,0.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">3</div>
+              <div>
+                <div style="font-weight:600;margin-bottom:3px">Weeks 3–6: Target Search</div>
+                <div style="font-size:12px;color:var(--muted)">Engage Florida-focused business brokers. Search BizBuySell, Acquire.com. Set criteria: FL roofing, $500K–$2M revenue, EBITDA &gt; 12%.</div>
+              </div>
+            </div>
+            <div class="card" style="padding:16px 20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,230,118,0.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">4</div>
+              <div>
+                <div style="font-weight:600;margin-bottom:3px">Weeks 6–8: Due Diligence &amp; LOI</div>
+                <div style="font-size:12px;color:var(--muted)">Narrow to 2–3 targets. Sign NDA. Review financials. Order QoE ($8–15K). Submit LOI on best target.</div>
+              </div>
+            </div>
+            <div class="card" style="padding:16px 20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,230,118,0.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">5</div>
+              <div>
+                <div style="font-weight:600;margin-bottom:3px">Weeks 8–16: SBA Process &amp; Close</div>
+                <div style="font-size:12px;color:var(--muted)">Submit SBA package. Underwriting. SBA approval. Closing. Transition to operations.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-gold" style="margin-bottom:14px; padding:22px">
+            <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">KEY RESOURCES</div>
+            <ul class="pro-con-list pro-list" style="font-size:13px">
+              <li>SBA.gov — Find PLP lenders by state</li>
+              <li>BizBuySell.com — Florida roofing listings</li>
+              <li>Florida DBPR — License verification &amp; application</li>
+              <li>Roofing Contractor Magazine — Top 100 FL operators</li>
+              <li>IBISWorld FL Roofing Report — Market benchmarks</li>
+              <li>Peak Business Valuation — SBA roofing valuation</li>
+            </ul>
+          </div>
+          <div class="card" style="padding:22px">
+            <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.08em">Summary Scorecard</div>
+            <div class="score-row">
+              <span class="score-label">Market Opportunity</span>
+              <div class="score-track"><div class="score-fill" style="width:95%;background:var(--green)"></div></div>
+              <span class="score-val" style="color:var(--green)">A+</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Build Viability</span>
+              <div class="score-track"><div class="score-fill" style="width:65%;background:var(--gold)"></div></div>
+              <span class="score-val" style="color:var(--gold)">B</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">Acquisition Viability</span>
+              <div class="score-track"><div class="score-fill" style="width:85%;background:var(--green)"></div></div>
+              <span class="score-val" style="color:var(--green)">A-</span>
+            </div>
+            <div class="score-row">
+              <span class="score-label">5-Yr Return Potential</span>
+              <div class="score-track"><div class="score-fill" style="width:90%;background:var(--green)"></div></div>
+              <span class="score-val" style="color:var(--green)">A</span>
+            </div>
+            <div class="divider"></div>
+            <div style="text-align:center;margin-top:8px">
+              <div style="font-size:12px;color:var(--muted)">Overall Opportunity Grade</div>
+              <div style="font-size:42px;font-weight:800;color:var(--green)">A</div>
+              <div style="font-size:12px;color:var(--muted)">Florida Roofing — Strong Buy</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end #deck -->
+
+<!-- Navigation -->
+<div id="nav">
+  <button id="btn-prev" onclick="changeSlide(-1)">&#8592;</button>
+  <div id="dots"></div>
+  <span id="slide-counter">1 / 15</span>
+  <button id="btn-next" onclick="changeSlide(1)">&#8594;</button>
+</div>
+
+<script>
+// ── Slide engine ────────────────────────────────────
+const TOTAL = 15;
+let current = 0;
+let chartsInitialized = {};
+
+const slides = Array.from(document.querySelectorAll('.slide'));
+const dotsContainer = document.getElementById('dots');
+const counter = document.getElementById('slide-counter');
+
+// Build dots
+for (let i = 0; i < TOTAL; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotsContainer.appendChild(d);
+}
+
+function changeSlide(dir) {
+  const next = Math.max(0, Math.min(TOTAL - 1, current + dir));
+  if (next !== current) goTo(next);
+}
+
+function goTo(idx) {
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit-left');
+  setTimeout(() => slides[current].classList.remove('exit-left'), 450);
+
+  current = idx;
+  slides[current].classList.add('active');
+
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i === current);
+  });
+  counter.textContent = `${current + 1} / ${TOTAL}`;
+  initChartsForSlide(current);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+});
+
+// ── Chart helpers ────────────────────────────────────
+const CYAN = '#00d4ff';
+const ORANGE = '#ff6b35';
+const GOLD = '#ffd700';
+const GREEN = '#00e676';
+const MUTED = '#7b8db0';
+const BG = 'rgba(255,255,255,0.04)';
+
+Chart.defaults.color = MUTED;
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+function cyanGrad(ctx, chartArea) {
+  const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  g.addColorStop(0, 'rgba(0,212,255,0.3)');
+  g.addColorStop(1, 'rgba(0,212,255,0.02)');
+  return g;
+}
+function orangeGrad(ctx, chartArea) {
+  const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  g.addColorStop(0, 'rgba(255,107,53,0.3)');
+  g.addColorStop(1, 'rgba(255,107,53,0.02)');
+  return g;
+}
+
+const defaultLineOptions = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: MUTED } },
+    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: MUTED } }
+  }
+};
+
+function initChartsForSlide(idx) {
+  if (chartsInitialized[idx]) return;
+  chartsInitialized[idx] = true;
+
+  // Slide 1 (idx 0) — no charts
+  // Slide 1 (idx 1) — market overview
+  if (idx === 1) {
+    // Growth chart
+    new Chart(document.getElementById('chart-growth'), {
+      type: 'bar',
+      data: {
+        labels: ['2020','2021','2022','2023','2024','2025','2026'],
+        datasets: [{
+          data: [4.8, 5.1, 5.4, 5.7, 6.1, 6.4, 6.7],
+          backgroundColor: (ctx) => {
+            if (!ctx.chart.chartArea) return CYAN;
+            const g = ctx.chart.ctx.createLinearGradient(0, ctx.chart.chartArea.top, 0, ctx.chart.chartArea.bottom);
+            g.addColorStop(0, CYAN); g.addColorStop(1, 'rgba(0,212,255,0.3)');
+            return g;
+          },
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        ...defaultLineOptions,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, font: { size: 10 }, callback: v => '$' + v + 'B' } }
+        }
+      }
+    });
+
+    // Market share donut
+    new Chart(document.getElementById('chart-market-share'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Florida (12%)', 'Rest of US (88%)'],
+        datasets: [{
+          data: [12, 88],
+          backgroundColor: [CYAN, 'rgba(255,255,255,0.08)'],
+          borderColor: ['rgba(0,212,255,0.5)', 'rgba(255,255,255,0.1)'],
+          borderWidth: 2,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: MUTED, padding: 12, font: { size: 11 } } }
+        },
+        cutout: '65%'
+      }
+    });
+  }
+
+  if (idx === 4) { // Slide 5 — startup costs
+    new Chart(document.getElementById('chart-startup-costs'), {
+      type: 'bar',
+      data: {
+        labels: ['Vehicle/Trailer','Insurance','Licensing/Bond','Marketing','Equipment','Working Capital'],
+        datasets: [
+          {
+            label: 'Min', data: [18000, 8000, 2000, 3000, 4000, 5000],
+            backgroundColor: 'rgba(0,212,255,0.25)', borderColor: CYAN, borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            label: 'Max', data: [53000, 23000, 10000, 10000, 15000, 15000],
+            backgroundColor: 'rgba(0,212,255,0.55)', borderColor: CYAN, borderWidth: 1,
+            borderRadius: 4,
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: MUTED, font: { size: 10 } } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, callback: v => '$' + (v/1000) + 'K' } },
+          y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  if (idx === 5) { // Slide 6 — scratch revenue
+    const scratchRevenue = [350, 900, 1700, 2600, 3500];
+    const scratchNet = [0, 63, 150, 234, 315];
+    const labels = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
+
+    const c = document.getElementById('chart-scratch-revenue');
+    new Chart(c, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Revenue ($K)',
+            data: scratchRevenue,
+            borderColor: CYAN, borderWidth: 2.5,
+            backgroundColor: (ctx) => {
+              if (!ctx.chart.chartArea) return 'transparent';
+              return cyanGrad(ctx.chart.ctx, ctx.chart.chartArea);
+            },
+            fill: true, tension: 0.4, pointBackgroundColor: CYAN, pointRadius: 4
+          },
+          {
+            label: 'Net Profit ($K)',
+            data: scratchNet,
+            borderColor: GREEN, borderWidth: 2, borderDash: [5,4],
+            backgroundColor: 'transparent',
+            fill: false, tension: 0.4, pointBackgroundColor: GREEN, pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        ...defaultLineOptions,
+        plugins: { legend: { display: true, labels: { color: MUTED, font: { size: 10 } } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, callback: v => '$' + v + 'K' } }
+        }
+      }
+    });
+  }
+
+  if (idx === 9) { // Slide 10 — acquisition revenue
+    const acqRevenue = [1000, 1400, 2000, 2800, 3800];
+    const acqNet = [39, 99, 189, 309, 459];
+    const labels = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
+
+    const c = document.getElementById('chart-acq-revenue');
+    new Chart(c, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Revenue ($K)',
+            data: acqRevenue,
+            borderColor: ORANGE, borderWidth: 2.5,
+            backgroundColor: (ctx) => {
+              if (!ctx.chart.chartArea) return 'transparent';
+              return orangeGrad(ctx.chart.ctx, ctx.chart.chartArea);
+            },
+            fill: true, tension: 0.4, pointBackgroundColor: ORANGE, pointRadius: 4
+          },
+          {
+            label: 'After Debt Svc ($K)',
+            data: acqNet,
+            borderColor: GREEN, borderWidth: 2, borderDash: [5,4],
+            backgroundColor: 'transparent',
+            fill: false, tension: 0.4, pointBackgroundColor: GREEN, pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        ...defaultLineOptions,
+        plugins: { legend: { display: true, labels: { color: MUTED, font: { size: 10 } } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, callback: v => '$' + v + 'K' } }
+        }
+      }
+    });
+  }
+
+  if (idx === 11) { // Slide 12 — comparison charts
+    // Cumulative profit comparison
+    new Chart(document.getElementById('chart-compare'), {
+      type: 'bar',
+      data: {
+        labels: ['Yr 1','Yr 2','Yr 3','Yr 4','Yr 5','Cumulative'],
+        datasets: [
+          {
+            label: '🏗️ Build',
+            data: [0, 63, 150, 234, 315, 762],
+            backgroundColor: 'rgba(0,212,255,0.45)', borderColor: CYAN, borderWidth: 1, borderRadius: 4
+          },
+          {
+            label: '🤝 Acquire',
+            data: [39, 99, 189, 309, 459, 1095],
+            backgroundColor: 'rgba(255,107,53,0.45)', borderColor: ORANGE, borderWidth: 1, borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: MUTED, font: { size: 10 } } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: MUTED, callback: v => '$' + v + 'K' } }
+        }
+      }
+    });
+
+    // Radar chart
+    new Chart(document.getElementById('chart-radar'), {
+      type: 'radar',
+      data: {
+        labels: ['Speed to Revenue','Capital Efficiency','Risk Profile','Year 5 Profit','Scalability','Control'],
+        datasets: [
+          {
+            label: '🏗️ Build',
+            data: [30, 85, 38, 65, 75, 95],
+            borderColor: CYAN, backgroundColor: 'rgba(0,212,255,0.12)', pointBackgroundColor: CYAN, borderWidth: 2
+          },
+          {
+            label: '🤝 Acquire',
+            data: [95, 60, 62, 85, 85, 70],
+            borderColor: ORANGE, backgroundColor: 'rgba(255,107,53,0.12)', pointBackgroundColor: ORANGE, borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: MUTED, font: { size: 10 } } } },
+        scales: {
+          r: {
+            grid: { color: 'rgba(255,255,255,0.07)' },
+            angleLines: { color: 'rgba(255,255,255,0.07)' },
+            ticks: { display: false },
+            pointLabels: { color: MUTED, font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+}
+
+// ── SBA Calculator ────────────────────────────────────
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function calcSBA() {
+  const price = +document.getElementById('calc-price').value;
+  const revenue = +document.getElementById('calc-revenue').value;
+  const ebitdaPct = +document.getElementById('calc-ebitda').value / 100;
+  const ratePct = +document.getElementById('calc-rate').value / 10000;
+
+  const down = price * 0.10;
+  const loan = price * 0.90;
+  const r = ratePct / 12;
+  const n = 120; // 10 years
+  const monthly = loan * r / (1 - Math.pow(1 + r, -n));
+  const annual = monthly * 12;
+  const ebitda = revenue * ebitdaPct;
+  const fcf = ebitda - annual;
+  const multiple = price / ebitda;
+
+  document.getElementById('price-display').textContent = fmt(price);
+  document.getElementById('revenue-display').textContent = fmt(revenue);
+  document.getElementById('ebitda-display').textContent = document.getElementById('calc-ebitda').value + '%';
+  document.getElementById('rate-display').textContent = (document.getElementById('calc-rate').value / 100).toFixed(2) + '%';
+
+  document.getElementById('calc-down').textContent = fmt(down);
+  document.getElementById('calc-loan').textContent = fmt(loan);
+  document.getElementById('calc-monthly').textContent = fmt(monthly);
+  document.getElementById('calc-annual').textContent = fmt(annual);
+  document.getElementById('calc-ebitda-val').textContent = fmt(ebitda);
+
+  const fcfEl = document.getElementById('calc-fcf');
+  fcfEl.textContent = fmt(fcf);
+  fcfEl.style.color = fcf >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const sigIcon = document.getElementById('calc-signal-icon');
+  const sigText = document.getElementById('calc-signal-text');
+  const sigSub = document.getElementById('calc-signal-sub');
+  const sig = document.getElementById('calc-signal');
+
+  if (fcf > 20000) {
+    sigIcon.textContent = '✅'; sigText.textContent = 'Deal appears serviceable';
+    sigText.style.color = 'var(--green)'; sigSub.textContent = 'Positive Year 1 cash flow with current parameters';
+    sig.style.borderColor = 'rgba(0,230,118,0.3)'; sig.style.background = 'rgba(0,230,118,0.05)';
+  } else if (fcf >= 0) {
+    sigIcon.textContent = '⚠️'; sigText.textContent = 'Tight but serviceable';
+    sigText.style.color = 'var(--gold)'; sigSub.textContent = 'Minimal margin — negotiate seller note or price reduction';
+    sig.style.borderColor = 'rgba(255,215,0,0.3)'; sig.style.background = 'rgba(255,215,0,0.05)';
+  } else {
+    sigIcon.textContent = '🚫'; sigText.textContent = 'Deal not serviceable at these terms';
+    sigText.style.color = 'var(--red)'; sigSub.textContent = 'Negative cash flow — renegotiate price or rate';
+    sig.style.borderColor = 'rgba(255,82,82,0.3)'; sig.style.background = 'rgba(255,82,82,0.05)';
+  }
+
+  const multEl = document.getElementById('calc-multiple');
+  multEl.textContent = multiple.toFixed(1) + 'x';
+  const multSigEl = document.getElementById('calc-multiple-signal');
+  if (multiple < 4) {
+    multSigEl.textContent = 'below — great value';
+    multSigEl.style.color = 'var(--green)';
+  } else if (multiple <= 9) {
+    multSigEl.textContent = 'within';
+    multSigEl.style.color = 'var(--gold)';
+  } else {
+    multSigEl.textContent = 'above — overpaying';
+    multSigEl.style.color = 'var(--red)';
+  }
+}
+
+['calc-price','calc-revenue','calc-ebitda','calc-rate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcSBA);
+});
+calcSBA(); // init
+
+// Init first slide charts
+initChartsForSlide(0);
+</script>
+</body>
+</html>
